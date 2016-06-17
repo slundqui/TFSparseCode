@@ -1,0 +1,16 @@
+A repository for playing around with image classification
+
+Requirements:
+numpy
+scipy
+tensorflow (0.8)
+matplotlib
+
+To run tensorboard, navigate to output directory (the one with a "train" and "test" folder) and run the following command
+
+tensorboard --logdir=./ <--port=8080>
+
+Note that you can set the port explicitly. If you omit, default port is 6006. To view, open browser and type in:
+
+localhost:<port_number>
+
