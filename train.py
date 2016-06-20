@@ -1,7 +1,7 @@
 #import matplotlib
 #matplotlib.use('Agg')
 from dataObj.image import cifarObj
-from tf.lca import LCA
+from tf.ista import ISTA
 #from plot.roc import makeRocCurve
 import numpy as np
 import pdb
@@ -15,14 +15,15 @@ testImageLists = "/home/sheng/mountData/datasets/cifar/images/test.txt"
 #Base output directory
 outDir = "/home/sheng/mountData/tfLCA/"
 #Inner run directory
-runDir = outDir + "/cifar_run0/"
+runDir = outDir + "/cifar_batch16_stride2/"
 
 #Flag for loading weights from checkpoint
 load = False
-loadFile = outDir + "/saved/dog-saved.ckpt"
+loadFile = outDir + "/saved/saved.ckpt"
 
-outerSteps = 200
-innerSteps = 1000
+outerSteps = 1000000
+innerSteps = 200
+saveSteps = 10 #In terms of innerSteps
 
 #output plots directory
 plotDir = runDir + "plots/"
@@ -36,14 +37,12 @@ if not os.path.exists(plotDir):
 
 #Get object from which tensorflow will pull data from
 trainDataObj = cifarObj(trainImageLists, resizeMethod="pad")
-testDataObj = cifarObj(testImageLists, resizeMethod="pad")
+#testDataObj = cifarObj(testImageLists, resizeMethod="pad")
 
-testDataObj.setMeanVar(trainDataObj.mean, trainDataObj.std)
-
-
+#testDataObj.setMeanVar(trainDataObj.mean, trainDataObj.std)
 
 #Allocate tensorflow object
-tfObj = LCA(trainDataObj)
+tfObj = ISTA(trainDataObj)
 
 #Load checkpoint if flag set
 if(load):
@@ -62,10 +61,13 @@ tfObj.normWeights()
 
 #Training
 for i in range(outerSteps):
+   if(i%saveSteps == 0):
+       tfObj.trainA(innerSteps, saveFile)
+   else:
+       tfObj.trainA(innerSteps)
    #Train
    tfObj.trainW()
    tfObj.normWeights()
-   tfObj.trainA(innerSteps, saveFile)
 
 print "Done run"
 
