@@ -1,6 +1,7 @@
 import pdb
 import numpy as np
 import tensorflow as tf
+from plots.plotWeights import make_plot
 #import matplotlib.pyplot as plt
 
 #Helper functions for initializing weights
@@ -51,14 +52,15 @@ def maxpool_2x2(x, inName):
 class ISTA:
     #Initialize tf parameters here
     #Learning rate for optimizer
-    learningRateA = 1e-3
-    learningRateW = 1e-3
+    learningRateA = 1e-4
+    learningRateW = 1e-4
     thresh = .015
     numV = 128
     VStride = 2
     patchSize = 12
     #Progress interval
     progress = 200
+    plotTimestep = 0
 
     #Global timestep
     timestep = 0
@@ -210,7 +212,11 @@ class ISTA:
         #Normalize weights
         self.sess.run(self.normalize_W)
 
-    def trainW(self):
+    def trainW(self, plotOutDir, plotPeriod=20):
+        if (self.plotTimestep % plotPeriod == 0):
+            np_V1_W = self.sess.run(self.V1_W)
+            make_plot(np_V1_W, plotOutDir+"dict_"+str(self.timestep)+".png")
+
         feedDict = {self.inputImage: self.currImg}
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
@@ -219,6 +225,8 @@ class ISTA:
         self.train_writer.add_summary(summary, self.timestep)
         #New image
         (self.currImg, drop) = self.dataObj.getData(self.batchSize)
+        self.plotTimestep += 1
+
 
     ##Evaluates all of inData at once
     ##If an inGt is provided, will calculate summary as test set

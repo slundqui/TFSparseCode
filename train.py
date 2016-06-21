@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 from dataObj.image import cifarObj
 from tf.ista import ISTA
 #from plot.roc import makeRocCurve
@@ -18,8 +18,8 @@ outDir = "/home/sheng/mountData/tfLCA/"
 runDir = outDir + "/cifar_batch16_stride2/"
 
 #Flag for loading weights from checkpoint
-load = False
-loadFile = outDir + "/saved/saved.ckpt"
+load = True
+loadFile = outDir + "/saved/cifar_batch16_stride2.ckpt"
 
 outerSteps = 1000000
 innerSteps = 200
@@ -66,7 +66,7 @@ for i in range(outerSteps):
    else:
        tfObj.trainA(innerSteps)
    #Train
-   tfObj.trainW()
+   tfObj.trainW(plotDir)
    tfObj.normWeights()
 
 print "Done run"
