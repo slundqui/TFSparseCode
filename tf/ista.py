@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from plots.plotWeights import make_plot
+import os
 #import matplotlib.pyplot as plt
 
 #Helper functions for initializing weights
@@ -50,28 +51,72 @@ def maxpool_2x2(x, inName):
             strides=[1, 2, 2, 1], padding='SAME', name=inName)
 
 class ISTA:
-    #Initialize tf parameters here
-    #Learning rate for optimizer
-    learningRateA = 1e-4
-    learningRateW = 1e-4
-    thresh = .015
-    numV = 128
-    VStride = 2
-    patchSize = 12
-    #Progress interval
-    progress = 200
-    plotTimestep = 0
-
     #Global timestep
     timestep = 0
+    plotTimestep = 0
+
+    #Sets dictionary of params to member variables
+    def loadParams(self, params):
+        #Initialize tf parameters here
+        self.outDir = params['outDir']
+        self.runDir = self.outDir + params['runDir']
+        self.ckptDir = self.runDir + params['ckptDir']
+        self.plotDir = self.runDir + params['plotDir']
+        self.tfDir = self.runDir + params['tfDir']
+        self.saveFile = self.ckptDir + params['saveFile']
+        self.load = params['load']
+        self.loadFile = params['loadFile']
+        self.numIterations= params['numIterations']
+        self.displayPeriod = params['displayPeriod']
+        self.savePeriod = params['savePeriod']
+        self.plotPeriod = params['plotPeriod']
+        self.batchSize = params['batchSize']
+        self.learningRateA = params['learningRateA']
+        self.learningRateW = params['learningRateW']
+        self.thresh = params['thresh']
+        self.numV = params['numV']
+        self.VStride = params['VStride']
+        self.patchSizeY = params['patchSizeY']
+        self.patchSizeX = params['patchSizeX']
+        self.progress = params['progress']
+
+    #Make approperiate directories if they don't exist
+    def makeDirs(self):
+        if not os.path.exists(self.runDir):
+           os.makedirs(self.runDir)
+        if not os.path.exists(self.plotDir):
+           os.makedirs(self.plotDir)
+        if not os.path.exists(self.ckptDir):
+           os.makedirs(self.ckptDir)
+
+    def runModel(self):
+        #Initialize
+        #Load checkpoint if flag set
+        if(self.load):
+           self.loadModel()
+        else:
+           self.fObj.initSess()
+        #Normalize weights to start
+        self.normWeights()
+
+        #Training
+        for i in range(self.numIterations):
+           if(i%self.savePeriod == 0):
+               self.trainA(True)
+           else:
+               self.trainA(False)
+           #Train
+           self.trainW()
+           self.normWeights()
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
-    def __init__(self, dataObj, vggFile = None, batchSize = 32):
+    def __init__(self, params, dataObj):
+        self.loadParams(params)
+        self.makeDirs()
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
         self.dataObj = dataObj
-        self.batchSize = batchSize
         self.buildModel(self.dataObj.inputShape)
-        (self.currImg, drop) = self.dataObj.getData(self.batchSize)
+        self.currImg = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
@@ -80,65 +125,64 @@ class ISTA:
         V_Y = int(inputShape[0]/self.VStride)
         V_X = int(inputShape[1]/self.VStride)
 
-
         #Running on GPU
-        with tf.device('gpu:0'):
-            with tf.name_scope("inputOps"):
-                #Get convolution variables as placeholders
-                self.inputImage = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
-                #Scale inputImage
-                self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSize*self.patchSize*inputShape[2])
+        #with tf.device('gpu:0'):
+        with tf.name_scope("inputOps"):
+            #Get convolution variables as placeholders
+            self.inputImage = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
+            #Scale inputImage
+            self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
 
-            with tf.name_scope("Dictionary"):
-                #self.V1_W = sparse_weight_variable((self.patchSize, self.patchSize, self.numV, 3), "V1_W")
-                self.V1_W = sparse_weight_variable((self.patchSize, self.patchSize, 3, self.numV), "V1_W")
+        with tf.name_scope("Dictionary"):
+            #self.V1_W = sparse_weight_variable((self.patchSize, self.patchSize, self.numV, 3), "V1_W")
+            self.V1_W = sparse_weight_variable((self.patchSizeY, self.patchSizeX, 3, self.numV), "V1_W")
 
-            with tf.name_scope("weightNorm"):
-                self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
-                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
+        with tf.name_scope("weightNorm"):
+            self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
+            self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
 
-            with tf.name_scope("ISTA"):
-                #Soft threshold
-                self.V1_A= weight_variable((self.batchSize, V_Y, V_X, self.numV), "V1_A", 1e-3)
-                #self.V1_A= weight_variable((self.batchSize, inputShape[0], inputShape[1], self.numV), "V1_A", .01)
-                #self.LCA_U = conv2d(self.error, self.V1_W, "u", stride=[1, 2, 2, 1])
-                #self.LCA_A = tf.nn.relu(self.LCA_U - self.thresh)
+        with tf.name_scope("ISTA"):
+            #Soft threshold
+            self.V1_A= weight_variable((self.batchSize, V_Y, V_X, self.numV), "V1_A", 1e-3)
+            #self.V1_A= weight_variable((self.batchSize, inputShape[0], inputShape[1], self.numV), "V1_A", .01)
+            #self.LCA_U = conv2d(self.error, self.V1_W, "u", stride=[1, 2, 2, 1])
+            #self.LCA_A = tf.nn.relu(self.LCA_U - self.thresh)
 
-            with tf.name_scope("Recon"):
-                assert(self.VStride >= 1)
-                #We build index tensor in numpy to gather
-                if(self.VStride == 1):
-                    self.recon = conv2d(self.V1_A, self.V1_W, "recon", [1, 1, 1, 1])
-                else:
-                    self.recon = conv2d_oneToMany(self.V1_A, self.V1_W, [self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "recon", self.VStride)
+        with tf.name_scope("Recon"):
+            assert(self.VStride >= 1)
+            #We build index tensor in numpy to gather
+            if(self.VStride == 1):
+                self.recon = conv2d(self.V1_A, self.V1_W, "recon", [1, 1, 1, 1])
+            else:
+                self.recon = conv2d_oneToMany(self.V1_A, self.V1_W, [self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "recon", self.VStride)
 
-            with tf.name_scope("Error"):
-                self.error = self.scaled_inputImage - self.recon
+        with tf.name_scope("Error"):
+            self.error = self.scaled_inputImage - self.recon
 
-            with tf.name_scope("Loss"):
-                self.reconError = tf.reduce_sum(tf.square(self.error))
-                self.l1Sparsity = tf.reduce_sum(tf.abs(self.V1_A))
-                #Define loss
-                self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
+        with tf.name_scope("Loss"):
+            self.reconError = tf.reduce_sum(tf.square(self.error))
+            self.l1Sparsity = tf.reduce_sum(tf.abs(self.V1_A))
+            #Define loss
+            self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
-            with tf.name_scope("Opt"):
-                #Define optimizer
-                #self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
-                self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
-                        var_list=[
-                            self.V1_A
-                        ])
-                self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
-                #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
-                        var_list=[
-                            self.V1_W
-                        ])
+        with tf.name_scope("Opt"):
+            #Define optimizer
+            #self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
+            self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
+                    var_list=[
+                        self.V1_A
+                    ])
+            self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
+            #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
+                    var_list=[
+                        self.V1_W
+                    ])
 
-            with tf.name_scope("stats"):
-                self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))*np.sqrt(self.patchSize*self.patchSize*inputShape[2])
-                self.underThresh = tf.reduce_mean(tf.cast(tf.abs(self.V1_A) > self.thresh, tf.float32))
-                self.l1_mean = tf.reduce_mean(tf.abs(self.V1_A))
-                self.weightImages = tf.transpose(self.V1_W, [3, 0, 1, 2])
+        with tf.name_scope("stats"):
+            self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))*np.sqrt(self.patchSizeY*self.patchSizeX*inputShape[2])
+            self.underThresh = tf.reduce_mean(tf.cast(tf.abs(self.V1_A) > self.thresh, tf.float32))
+            self.l1_mean = tf.reduce_mean(tf.abs(self.V1_A))
+            self.weightImages = tf.transpose(self.V1_W, [3, 0, 1, 2])
 
         #Summaries
         self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
@@ -162,12 +206,15 @@ class ISTA:
         #Define saver
         self.saver = tf.train.Saver()
 
+        #Load summary
+        self.writeSummary()
+
     #Initializes session.
     def initSess(self):
         self.sess.run(tf.initialize_all_variables())
 
     #Allocates and specifies the output directory for tensorboard summaries
-    def writeSummary(self, summaryDir):
+    def writeSummary(self):
         self.mergedSummary = tf.merge_summary([
             self.s_loss,
             self.s_recon,
@@ -184,17 +231,16 @@ class ISTA:
         self.imageSummary = tf.merge_summary([
             self.i_w, self.i_orig, self.i_recon
             ])
-        self.train_writer = tf.train.SummaryWriter(summaryDir + "/train", self.sess.graph)
-        #self.test_writer = tf.train.SummaryWriter(summaryDir + "/test")
+        self.train_writer = tf.train.SummaryWriter(self.tfDir + "/train", self.sess.graph)
+        #self.test_writer = tf.train.SummaryWriter(self.tfDir+ "/test")
 
     def closeSess(self):
         self.sess.close()
 
     #Trains model for numSteps
-    def trainA(self, numSteps, saveFile=None):
+    def trainA(self, save):
         #Define session
-        for i in range(numSteps):
-            #feedDict = {self.inputImage: data[0], self.gt: data[1], self.keep_prob: .5}
+        for i in range(self.displayPeriod):
             feedDict = {self.inputImage: self.currImg}
             #Run optimizer
             self.sess.run(self.optimizerA, feed_dict=feedDict)
@@ -204,18 +250,18 @@ class ISTA:
                 self.train_writer.add_summary(summary, self.timestep)
                 print "Timestep ", self.timestep
 
-        if(saveFile):
-            save_path = self.saver.save(self.sess, saveFile, global_step=self.timestep, write_meta_graph=False)
+        if(save):
+            save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
             print("Model saved in file: %s" % save_path)
 
     def normWeights(self):
         #Normalize weights
         self.sess.run(self.normalize_W)
 
-    def trainW(self, plotOutDir, plotPeriod=20):
-        if (self.plotTimestep % plotPeriod == 0):
+    def trainW(self):
+        if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.V1_W)
-            make_plot(np_V1_W, plotOutDir+"dict_"+str(self.timestep)+".png")
+            make_plot(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
 
         feedDict = {self.inputImage: self.currImg}
         #Update weights
@@ -224,7 +270,7 @@ class ISTA:
         summary = self.sess.run(self.imageSummary, feed_dict=feedDict)
         self.train_writer.add_summary(summary, self.timestep)
         #New image
-        (self.currImg, drop) = self.dataObj.getData(self.batchSize)
+        self.currImg = self.dataObj.getData(self.batchSize)
         self.plotTimestep += 1
 
 
@@ -296,7 +342,7 @@ class ISTA:
     #    return outData
 
     #Loads a tf checkpoint
-    def loadModel(self, loadFile):
-        self.saver.restore(self.sess, loadFile)
-        print("Model %s loaded" % loadFile)
+    def loadModel(self):
+        self.saver.restore(self.sess, self.loadFile)
+        print("Model %s loaded" % self.loadFile)
 

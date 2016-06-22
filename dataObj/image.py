@@ -13,12 +13,13 @@ def readList(filename):
     #Remove newlines from all lines
     return [line[:-1] for line in allLines]
 
+
 """
 An object that handles data input
 """
-class cifarObj:
+class imageObj:
     imgIdx = 0
-    inputShape = (32, 32, 3)
+    #inputShape = (32, 32, 3)
     maxDim = 0
 
     #Constructor takes a text file containing a list of absolute filenames
@@ -37,7 +38,7 @@ class cifarObj:
         self.shuffleIdx = range(self.numImages)
         shuffle(self.shuffleIdx)
         #This function will also set self.maxDim
-        self.getMeanVar()
+        #self.getMeanVar()
         if(self.resizeMethod=="crop"):
             pass
         elif(self.resizeMethod=="pad"):
@@ -48,10 +49,10 @@ class cifarObj:
             print "Method ", resizeMethod, "not supported"
             assert(0)
 
-    #Explicitly sets the mean and standard deviation for normalization
-    def setMeanVar(self, inMean, inStd):
-        self.mean = inMean
-        self.std = inStd
+    ##Explicitly sets the mean and standard deviation for normalization
+    #def setMeanVar(self, inMean, inStd):
+    #    self.mean = inMean
+    #    self.std = inStd
 
     #Explicitly sets the max dim for the input shape.
     def setMaxDim(self, inMaxDim):
@@ -61,29 +62,29 @@ class cifarObj:
         self.maxDim = inMaxDim
         self.inputShape=(self.maxDim, self.maxDim, 3)
 
-    #Calculates the mean and standard deviation from the images
-    #Will also calculate the max dimension of image
-    def getMeanVar(self):
-        s = 0
-        num = 0
-        for f in self.imgFiles:
-            img = (imread(f).astype(np.float32)/256)
-            [ny, nx, nf] = img.shape
-            if(ny > self.maxDim):
-                self.maxDim = ny
-            if(nx > self.maxDim):
-                self.maxDim = nx
-            s += np.sum(img)
-            num += img.size
-        self.mean = s / num
-        print "img mean: ", self.mean
-        ss = 0
-        for f in self.imgFiles:
-            img = (imread(f).astype(np.float32)/256)
-            ss += np.sum(np.power(img-self.mean, 2))
-        self.std = np.sqrt(float(ss)/num)
-        print "depth std: ", self.std
-        print "maxDim: ", self.maxDim
+    ##Calculates the mean and standard deviation from the images
+    ##Will also calculate the max dimension of image
+    #def getMeanVar(self):
+    #    s = 0
+    #    num = 0
+    #    for f in self.imgFiles:
+    #        img = (imread(f).astype(np.float32)/256)
+    #        [ny, nx, nf] = img.shape
+    #        if(ny > self.maxDim):
+    #            self.maxDim = ny
+    #        if(nx > self.maxDim):
+    #            self.maxDim = nx
+    #        s += np.sum(img)
+    #        num += img.size
+    #    self.mean = s / num
+    #    print "img mean: ", self.mean
+    #    ss = 0
+    #    for f in self.imgFiles:
+    #        img = (imread(f).astype(np.float32)/256)
+    #        ss += np.sum(np.power(img-self.mean, 2))
+    #    self.std = np.sqrt(float(ss)/num)
+    #    print "depth std: ", self.std
+    #    print "maxDim: ", self.maxDim
 
     #Function to resize image to inputShape
     def resizeImage(self, inImage):
@@ -139,11 +140,12 @@ class cifarObj:
     #Returns the image and ground truth
     def readImage(self, filename):
         image = imread(filename)
-        image = ((self.resizeImage(image).astype(np.float32)/256)-self.mean)/self.std
-        gt = np.zeros((10))
+        image = (self.resizeImage(image).astype(np.float32)/256)
+        image = (image-np.mean(image))/np.std(image)
+        #gt = np.zeros((10))
         s = filename.split('/')[-2]
-        gt[int(s)] = 1
-        return(image, gt)
+        #gt[int(s)] = 1
+        return image
 
     #Grabs the next image in the list. Will shuffle images when rewinding
     def nextImage(self):
@@ -159,21 +161,26 @@ class cifarObj:
     #Get all segments of current image. This is what evaluation calls for testing
     def allImages(self):
         outData = np.zeros((self.numImages, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-        outGt = np.zeros((self.numImages, 10))
+        #outGt = np.zeros((self.numImages, 10))
         for i, imgFile in enumerate(self.imgFiles):
             data = self.readImage(imgFile)
-            outData[i, :, :, :] = data[0]
-            outGt[i, :] = data[1]
-        return (outData, outGt)
+            outData[i, :, :, :] = data
+            #outGt[i, :] = data[1]
+        return outData
 
     #Gets numExample images and stores it into an outer dimension.
     #This is what TF object calls to get images for training
     def getData(self, numExample):
         outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], 3))
-        outGt = np.zeros((numExample, 10))
+        #outGt = np.zeros((numExample, 10))
         for i in range(numExample):
             data = self.nextImage()
-            outData[i, :, :, :] = data[0]
-            outGt[i, :] = data[1]
-        return (outData, outGt)
+            outData[i, :, :, :] = data
+            #outGt[i, :] = data[1]
+        return outData
 
+class cifarObj(imageObj):
+    inputShape = (32, 32, 3)
+
+class imageNetObj(imageObj):
+    inputShape = (64, 128, 3)
