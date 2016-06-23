@@ -50,6 +50,86 @@ def maxpool_2x2(x, inName):
 def conv3d(x, w, inName):
     return tf.nn.conv3d(x, w, strides=[1, 1, 1, 1, 1], padding='SAME', name=inName)
 
+#Transposes data to permute strides to the output feature dimension
+def transpose5dData(x, xShape, strideT, strideY, strideX):
+    [nb, nt, ny, nx, nf] = xShape
+    print "Building output indices for conv3d"
+    #Build gather indices for output
+    #Must be in shape of target output data
+    dataIdxs = np.zeros((nb, nt/strideT, ny/strideY, nx/strideX, nf*strideT*strideY*strideX, 5)).astype(np.int32)
+    for iib in range(nb):
+        for iit in range(nt):
+            for iiy in range(ny):
+                for iix in range(nx):
+                    for iif in range(nf):
+                        #Calculate input indices given output indices
+                        oob = iib
+                        oot = iit/strideT
+                        ooy = iiy/strideY
+                        oox = iix/strideX
+                        kernelIdx = (iit%strideT)*strideY*strideX + (iiy%strideY)*strideX + (iix%strideX)
+                        oof = iif + nf*kernelIdx
+                        dataIdxs[oob, oot, ooy, oox, oof, :] = [iib, iit, iiy, iix, iif]
+    return tf.gather_nd(x, dataIdxs)
+
+#Undo transepost5dData
+def undoTranspose5dData(x, xShape, strideT, strideY, strideX):
+    #These shapes are in terms of the orig image
+    [nb, nt, ny, nx, nf] = xShape
+    print "Building output indices for conv3d"
+    #Build gather indices for output
+    #Must be in shape of target output data
+    dataIdxs = np.zeros((nb, nt, ny, nx, nf, 5)).astype(np.int32)
+    for oob in range(nb):
+        for oot in range(nt):
+            for ooy in range(ny):
+                for oox in range(nx):
+                    for oof in range(nf):
+                        #Calculate input indices given output indices
+                        iib = oob
+                        iit = oot/strideT
+                        iiy = ooy/strideY
+                        iix = oox/strideX
+                        kernelIdx = (oot%strideT)*strideY*strideX + (ooy%strideY)*strideX + (oox%strideX)
+                        iif = oof + nf*kernelIdx
+                        dataIdxs[oob, oot, ooy, oox, oof, :] = [iib, iit, iiy, iix, iif]
+    return tf.gather_nd(x, dataIdxs)
+
+#Transposes weight data for viewing
+def transpose5dWeight(w, wShape, strideT, strideY, strideX):
+    print "Building weight indices for conv3d"
+    #These shapes are in terms of the already strided values
+    [ntp, nyp, nxp, nifp, nofp] = wShape
+    #Translate to target output shape
+    ntp *= strideT
+    nyp *= strideY
+    nxp *= strideX
+    nofp = nofp/(strideT*strideX*strideY)
+
+    #Build gather indices for weights
+    #Must be in shape of target output weights
+    weightIdxs = np.zeros((ntp, nyp, nxp, nifp, nofp, 5)).astype(np.int32)
+    #Adding kernel number to end of features
+    for otp in range(ntp):
+        for oyp in range(nyp):
+            for oxp in range(nxp):
+                for oifp in range(nifp):
+                    for oofp in range(nofp):
+                        #Calculate output indices given input indices
+                        #Must reverse, as we're using conv2d as transpose conv2d
+                        #otp = int((ntp-itp-1)/strideT)
+                        #oyp = int((nyp-iyp-1)/strideY)
+                        #oxp = int((nxp-ixp-1)/strideX)
+                        #oifp = iifp #Input features stay the same
+                        itp = int((ntp - otp-1)/strideT)
+                        iyp = int((nyp - oyp-1)/strideY)
+                        ixp = int((nxp - oxp-1)/strideX)
+                        iifp=oifp
+                        #oofp uses iofp as offset, plus an nf stride based on which kernel it belongs to
+                        kernelIdx = (otp%strideT)*strideY*strideX + (oyp%strideY)*strideX + (oxp%strideX)
+                        iofp = oofp + nofp * kernelIdx
+                        weightIdxs[otp, oyp, oxp, oifp, oofp, :] = [itp, iyp, ixp, iifp, iofp]
+    return tf.gather_nd(w, weightIdxs)
 
 def conv3d_oneToMany(x, xShape, w, wShape, strideT, strideY, strideX, inName):
     [ntp, nyp, nxp, nifp, nofp] = wShape

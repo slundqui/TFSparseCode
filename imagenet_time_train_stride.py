@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from dataObj.image import imageNetObj
-from tf.ista_time import ISTA_Time
+from tf.ista_time_stride import ISTA_Time_Stride
 #from plot.roc import makeRocCurve
 import pdb
 
@@ -15,14 +15,14 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/imagenetTime/",
+    'runDir':          "/imagenetTimeStride/",
     'tfDir':           "/tfout",
     'ckptDir':         "/checkpoints/",
     'saveFile':        "/save-model",
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/imagenet_spacetime.ckpt",
-    'numIterations':   10000000,
+    'numIterations':   1000000,
     'displayPeriod':   300,
     'savePeriod':      10, #In terms of displayPeriod
     #output plots directory
@@ -39,22 +39,22 @@ params = {
     #Lambda in energy function
     'thresh':          .0125,
     #Number of features in V1
-    'numV':            192,
+    'numV':            1536,
     #Time dimension
-    'nT':              6,
+    'nT':              7,
     #Stride of V1
     'VStrideT':        1,
-    'VStrideY':        1,
-    'VStrideX':        1,
+    'VStrideY':        4,
+    'VStrideX':        4,
     #Patch size
-    'patchSizeT':      3,
-    'patchSizeY':      8,
-    'patchSizeX':      8,
+    'patchSizeT':      4,
+    'patchSizeY':      16,
+    'patchSizeX':      16,
 }
 
 #Allocate tensorflow object
 #This will build the graph
-tfObj = ISTA_Time(params, trainDataObj)
+tfObj = ISTA_Time_Stride(params, trainDataObj)
 
 print "Done init"
 tfObj.runModel()
