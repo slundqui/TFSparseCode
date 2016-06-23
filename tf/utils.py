@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import pdb
 
 #Helper functions for initializing weights
 def weight_variable_fromnp(inNp, inName):
@@ -46,45 +47,95 @@ def maxpool_2x2(x, inName):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
             strides=[1, 2, 2, 1], padding='SAME', name=inName)
 
-def conv2d_oneToMany_test(x, xShape, w, wShape, strideX, strideY, inName):
-    [nyp, nxp, nifp, nofp] = wShape
-    [nb, ny, nx, nf] = xShape
-    assert(inF == nf)
-    targetShape = [nb, ny*strideY, nx*strideX, outF]
+def conv3d(x, w, inName):
+    return tf.nn.conv3d(x, w, strides=[1, 1, 1, 1, 1], padding='SAME', name=inName)
 
+
+def conv3d_oneToMany(x, xShape, w, wShape, strideT, strideY, strideX, inName):
+    [ntp, nyp, nxp, nifp, nofp] = wShape
+    [nb, nt, ny, nx, nf] = xShape
+
+    #stride must be divisible by both weights and input
+    assert(ntp%strideT == 0)
+    assert(nyp%strideY == 0)
+    assert(nxp%strideX == 0)
+    assert(nt%strideT == 0)
+    assert(ny%strideY == 0)
+    assert(nx%strideX == 0)
+
+    assert(nifp == nf)
+
+    print "Building weight indices for conv3d"
     #Build gather indices for weights
+    #Must be in shape of target output weights
+    weightIdxs = np.zeros((int(ntp/strideT), int(nyp/strideY), int(nxp/strideX), nifp, nofp*strideT*strideX*strideY, 5)).astype(np.int32)
     #Adding kernel number to end of features
-    for iyp in range(nyp):
-        for ixp in range(nxp):
-            for iifp in range(nifp):
-                for iofp in range(nofp):
-                    pass
+    for itp in range(ntp):
+        for iyp in range(nyp):
+            for ixp in range(nxp):
+                for iifp in range(nifp):
+                    for iofp in range(nofp):
+                        #Calculate output indices given input indices
+                        #Must reverse, as we're using conv2d as transpose conv2d
+                        otp = int((ntp-itp-1)/strideT)
+                        oyp = int((nyp-iyp-1)/strideY)
+                        oxp = int((nxp-ixp-1)/strideX)
+                        oifp = iifp #Input features stay the same
+                        #oofp uses iofp as offset, plus an nf stride based on which kernel it belongs to
+                        kernelIdx = (itp%strideT)*strideY*strideX + (iyp%strideY)*strideX + (ixp%strideX)
+                        oofp = iofp + nofp * kernelIdx
+                        weightIdxs[otp, oyp, oxp, oifp, oofp, :] = [itp, iyp, ixp, iifp, iofp]
+
+
+    print "Building output indices for conv3d"
+    #Build gather indices for output
+    #Must be in shape of target output data
+    dataIdxs = np.zeros((nb, nt*strideT, ny*strideY, nx*strideX, nofp, 5)).astype(np.int32)
+    for oob in range(nb):
+        for oot in range(nt*strideT):
+            for ooy in range(ny*strideY):
+                for oox in range(nx*strideX):
+                    for oof in range(nofp):
+                        #Calculate input indices given output indices
+                        iib = oob
+                        iit = oot/strideT
+                        iiy = ooy/strideY
+                        iix = oox/strideX
+                        kernelIdx = (oot%strideT)*strideY*strideX + (ooy%strideY)*strideX + (oox%strideX)
+                        iif = oof + nofp*kernelIdx
+                        dataIdxs[oob, oot, ooy, oox, oof, :] = [iib, iit, iiy, iix, iif]
+
+    #Build convolution structure
+    w_reshape = tf.gather_nd(w, weightIdxs)
+    o_reshape = tf.nn.conv3d(x, w_reshape, strides=[1, 1, 1, 1, 1], padding='SAME', name=inName)
+    o = tf.gather_nd(o_reshape, dataIdxs)
+    return o
 
 if __name__ == "__main__":
-    weightShape = (4, 4, 1, 1)
+    #For conv2d
+    weightShapeOrig = (6, 6, 6, 1, 1)
     stride = 2
-    inputShape = (1, 8, 8, 1)
+    inputShape = (1, 8, 8, 8, 1)
 
-    outputShape = (1, inputShape[1]*stride, inputShape[2]*stride, 1)
+    npWeightArray = np.zeros(weightShapeOrig).astype(np.float32)
+    for itp in range(6):
+        for iyp in range(6):
+            for ixp in range(6):
+                idx = itp*36 + iyp*6 + ixp
+                npWeightArray[itp, iyp, ixp, 0, 0] = idx
 
-    npWeightArray = np.zeros(weightShape)
-    npWeightArray[0, 0, 0, 0] = 1
-    npWeightArray[0, 1, 0, 0] = 2
-    npWeightArray[0, 2, 0, 0] = 1
-    npWeightArray[0, 3, 0, 0] = 2
-    npWeightArray[1, 0, 0, 0] = 3
-    npWeightArray[1, 1, 0, 0] = 4
-    npWeightArray[1, 2, 0, 0] = 3
-    npWeightArray[1, 3, 0, 0] = 4
-    npWeightArray[2, 0, 0, 0] = 1
-    npWeightArray[2, 1, 0, 0] = 2
-    npWeightArray[2, 2, 0, 0] = 1
-    npWeightArray[2, 3, 0, 0] = 2
-    npWeightArray[3, 0, 0, 0] = 3
-    npWeightArray[3, 1, 0, 0] = 4
-    npWeightArray[3, 2, 0, 0] = 3
-    npWeightArray[3, 3, 0, 0] = 4
+    npInputArray = np.zeros(inputShape).astype(np.float32)
+    npInputArray[0, 3, 3, 3, 0] = 1
 
-    npInputArray = np.zeros(inputShape)
-    npInputArray[0, 3, 3, 0] = 1
+    #Tensorflow test
+    sess=tf.InteractiveSession()
+    W = tf.Variable(npWeightArray)
+    I = tf.Variable(npInputArray)
+    O = conv3d_oneToMany(I, inputShape, W, weightShapeOrig, 2, 2, 2, "test")
+    sess.run(tf.initialize_all_variables())
 
+    npI = I.eval()[0, :, :, :, 0]
+    npW = W.eval()[:, :, :, 0, 0]
+    npO = O.eval()[0, :, :, :, 0]
+
+    pdb.set_trace()

@@ -44,7 +44,9 @@ class imageObj:
         elif(self.resizeMethod=="pad"):
             pass
         elif(self.resizeMethod=="max"):
-            self.inputShape=(self.maxDim, self.maxDim, 3)
+            #self.inputShape=(self.maxDim, self.maxDim, 3)
+            print "Resize method max Not implemented"
+            assert(0)
         else:
             print "Method ", resizeMethod, "not supported"
             assert(0)
@@ -54,13 +56,13 @@ class imageObj:
     #    self.mean = inMean
     #    self.std = inStd
 
-    #Explicitly sets the max dim for the input shape.
-    def setMaxDim(self, inMaxDim):
-        if(self.maxDim > inMaxDim):
-            print "Error, input maxDim (", inMaxDim, ") is smaller than the biggest dimension in input images (", self.maxDim, ")"
-            assert(0)
-        self.maxDim = inMaxDim
-        self.inputShape=(self.maxDim, self.maxDim, 3)
+    ##Explicitly sets the max dim for the input shape.
+    #def setMaxDim(self, inMaxDim):
+    #    if(self.maxDim > inMaxDim):
+    #        print "Error, input maxDim (", inMaxDim, ") is smaller than the biggest dimension in input images (", self.maxDim, ")"
+    #        assert(0)
+    #    self.maxDim = inMaxDim
+    #    self.inputShape=(self.maxDim, self.maxDim, 3)
 
     ##Calculates the mean and standard deviation from the images
     ##Will also calculate the max dimension of image
@@ -143,39 +145,57 @@ class imageObj:
         image = (self.resizeImage(image).astype(np.float32)/256)
         image = (image-np.mean(image))/np.std(image)
         #gt = np.zeros((10))
-        s = filename.split('/')[-2]
+        #s = filename.split('/')[-2]
         #gt[int(s)] = 1
         return image
 
     #Grabs the next image in the list. Will shuffle images when rewinding
-    def nextImage(self):
-        imgFile = self.imgFiles[self.shuffleIdx[self.imgIdx]]
+    #Num frames define how many in the clip it will grab
+    def nextImage(self, numFrames = 1):
+        assert(numFrames >= 1)
+        startIdx = self.shuffleIdx[self.imgIdx]
+        if(numFrames == 1):
+            imgFile = self.imgFiles[startIdx]
+            outImg = self.readImage(imgFile)
+        else:
+            outImg = np.zeros((numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+            for f in range(numFrames):
+                imgFile = self.imgFiles[startIdx+f]
+                outImg[f, :, :, :] = self.readImage(imgFile)
         #Update imgIdx
         self.imgIdx = (self.imgIdx + 1) % len(self.imgFiles)
+
         if(self.imgIdx >= self.numImages):
             print "Rewinding"
             self.imgIdx = 0
             shuffle(range(self.numImages))
-        return self.readImage(imgFile)
+        return outImg
 
-    #Get all segments of current image. This is what evaluation calls for testing
-    def allImages(self):
-        outData = np.zeros((self.numImages, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-        #outGt = np.zeros((self.numImages, 10))
-        for i, imgFile in enumerate(self.imgFiles):
-            data = self.readImage(imgFile)
-            outData[i, :, :, :] = data
-            #outGt[i, :] = data[1]
-        return outData
+    ##Get all segments of current image. This is what evaluation calls for testing
+    #def allImages(self):
+    #    outData = np.zeros((self.numImages, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+    #    #outGt = np.zeros((self.numImages, 10))
+    #    for i, imgFile in enumerate(self.imgFiles):
+    #        data = self.readImage(imgFile)
+    #        outData[i, :, :, :] = data
+    #        #outGt[i, :] = data[1]
+    #    return outData
 
     #Gets numExample images and stores it into an outer dimension.
     #This is what TF object calls to get images for training
-    def getData(self, numExample):
-        outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], 3))
+    def getData(self, numExample, numFrames=1):
+        assert(numFrames >= 1)
+        if(numFrames == 1):
+            outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        else:
+            outData = np.zeros((numExample, numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         #outGt = np.zeros((numExample, 10))
         for i in range(numExample):
-            data = self.nextImage()
-            outData[i, :, :, :] = data
+            data = self.nextImage(numFrames)
+            if(numFrames == 1):
+                outData[i, :, :, :] = data
+            else:
+                outData[i, :, :, :, :] = data
             #outGt[i, :] = data[1]
         return outData
 
@@ -183,4 +203,5 @@ class cifarObj(imageObj):
     inputShape = (32, 32, 3)
 
 class imageNetObj(imageObj):
-    inputShape = (64, 128, 3)
+    #inputShape = (64, 128, 3)
+    inputShape = (64, 64, 3)
