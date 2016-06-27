@@ -8,14 +8,14 @@ import pdb
 trainImageLists =  "/shared/imageNet/vid2015_128x64/imageNetVID_2015_list.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
-trainDataObj = imageNetObj(trainImageLists, resizeMethod="crop", shuffle=True, seed=randImageSeed)
+trainDataObj = imageNetObj(trainImageLists, resizeMethod="crop", shuffle=False, skip=32, seed=randImageSeed)
 
 #ISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/imagenetTime/",
+    'runDir':          "/imagenetTime_eval/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -34,7 +34,7 @@ params = {
     'load':            True,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/imagenet_spacetime.ckpt",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #####ISTA PARAMS######
     #Num iterations
     'numIterations':   1000000, #1000000,
@@ -43,7 +43,7 @@ params = {
     'batchSize':       1,
     #Learning rate for optimizer
     'learningRateA':   1e-4,
-    'learningRateW':   1e-4,
+    'learningRateW':   1e-5,
     #Lambda in energy function
     'thresh':          .03,
     #Number of features in V1
@@ -65,8 +65,7 @@ params = {
 tfObj = ISTA_Time(params, trainDataObj)
 
 print "Done init"
-tfObj.runModel()
-print "Done run"
+tfObj.evalSet(trainDataObj, "/home/slundquist/mountData/tfLCA/imagenetTime_eval/train_data/imagenet_time_")
 
 tfObj.closeSess()
 

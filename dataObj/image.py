@@ -4,7 +4,7 @@ from scipy.misc import imresize
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
-from random import shuffle
+import random
 
 def readList(filename):
     f = open(filename, 'r')
@@ -31,12 +31,18 @@ class imageObj:
     #"max" will find the max dimension of the list of images, and pad the surrounding area
     #Additionally, if inMaxDim is set with resizeMethod of "max", it will explicitly set
     #the max dimension to inMaxDim
-    def __init__(self, imgList, resizeMethod="crop"):
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None):
         self.resizeMethod=resizeMethod
         self.imgFiles = readList(imgList)
         self.numImages = len(self.imgFiles)
         self.shuffleIdx = range(self.numImages)
-        shuffle(self.shuffleIdx)
+        self.skip = skip
+        if(shuffle):
+            #Initialize random seed
+            if(seed):
+                #Seed random
+                random.seed(seed)
+            random.shuffle(self.shuffleIdx)
         #This function will also set self.maxDim
         #self.getMeanVar()
         if(self.resizeMethod=="crop"):
@@ -138,11 +144,10 @@ class imageObj:
         return outImage
 
     #Reads image provided in the argument, resizes, and normalizes image
-    #Also parses ground truth label from path and sets a one-hot 2 dimensional vector
-    #Returns the image and ground truth
+    #Returns the image
     def readImage(self, filename):
         image = imread(filename)
-        image = (self.resizeImage(image).astype(np.float32)/256)
+        image = (self.resizeImage(image).astype(np.float32)/255)
         image = (image-np.mean(image))/np.std(image)
         #gt = np.zeros((10))
         #s = filename.split('/')[-2]
@@ -163,7 +168,7 @@ class imageObj:
                 imgFile = self.imgFiles[startIdx+f]
                 outImg[f, :, :, :] = self.readImage(imgFile)
         #Update imgIdx
-        self.imgIdx = (self.imgIdx + 1) % len(self.imgFiles)
+        self.imgIdx = self.imgIdx + self.skip
 
         if(self.imgIdx >= self.numImages):
             print "Rewinding"

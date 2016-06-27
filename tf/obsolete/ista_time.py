@@ -3,10 +3,10 @@ import numpy as np
 import tensorflow as tf
 from plots.plotWeights import make_plot_time
 import os
-from .utils import sparse_weight_variable, weight_variable, node_variable, conv3d, transpose5dData, transpose5dWeight, undoTranspose5dData
+from .utils import sparse_weight_variable, weight_variable, node_variable, conv3d
 #import matplotlib.pyplot as plt
 
-class ISTA_Time_Stride:
+class ISTA_Time:
     #Global timestep
     timestep = 0
     plotTimestep = 0
@@ -92,13 +92,9 @@ class ISTA_Time_Stride:
         V_T = int(self.nT/self.VStrideT)
         V_Y = int(inputShape[0]/self.VStrideY)
         V_X = int(inputShape[1]/self.VStrideX)
-        V_Tp = int(self.patchSizeT/self.VStrideT)
-        V_Yp = int(self.patchSizeY/self.VStrideY)
-        V_Xp = int(self.patchSizeX/self.VStrideX)
-        V_Ofp = int(inputShape[2]*self.VStrideT*self.VStrideY*self.VStrideX)
 
         imageShape = (self.batchSize, self.nT, inputShape[0], inputShape[1], inputShape[2])
-        WShape = (V_Tp, V_Yp, V_Xp, self.numV, V_Ofp)
+        WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, self.numV, inputShape[2])
         VShape = (self.batchSize, V_T, V_Y, V_X, self.numV)
 
         #Running on GPU
@@ -110,7 +106,6 @@ class ISTA_Time_Stride:
             self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
             #This is what it should be, but for now, we ignore the scaling with nT
             #self.scaled_inputImage = self.inputImage/np.sqrt(self.nT*self.patchSizeX*self.patchSizeY*inputShape[2])
-            self.reshape_inputImage = transpose5dData(self.scaled_inputImage, imageShape, self.VStrideT, self.VStrideY, self.VStrideX)
 
         with tf.name_scope("Dictionary"):
             self.V1_W = sparse_weight_variable(WShape, "V1_W")
@@ -131,10 +126,15 @@ class ISTA_Time_Stride:
             assert(self.VStrideY >= 1)
             assert(self.VStrideX >= 1)
             #We build index tensor in numpy to gather
-            self.recon = conv3d(self.V1_A, self.V1_W, "recon")
+            if(self.VStrideT == 1 and self.VStrideY == 1 and self.VStrideX == 1):
+                self.recon = conv3d(self.V1_A, self.V1_W, "recon")
+            else:
+                print "oneToMany 3d convolutions not implemented yet"
+                assert(0)
+                #self.recon = conv3d_oneToMany(self.V1_A, VShape, self.V1_W, WShape, self.VStrideT, self.VStrideY, self.VStrideX, "recon")
 
         with tf.name_scope("Error"):
-            self.error = self.reshape_inputImage - self.recon
+            self.error = self.scaled_inputImage - self.recon
 
         with tf.name_scope("Loss"):
             self.reconError = tf.reduce_sum(tf.square(self.error))
@@ -159,12 +159,9 @@ class ISTA_Time_Stride:
             self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))*np.sqrt(self.patchSizeY*self.patchSizeX*inputShape[2])
             self.underThresh = tf.reduce_mean(tf.cast(tf.abs(self.V1_A) > self.thresh, tf.float32))
             self.l1_mean = tf.reduce_mean(tf.abs(self.V1_A))
-            #Reshape weights for viewing
-            self.reshape_weight = transpose5dWeight(self.V1_W, WShape, self.VStrideT, self.VStrideY, self.VStrideX)
-            self.weightImages = tf.reshape(tf.transpose(self.reshape_weight, [3, 0, 1, 2, 4]), [self.numV*self.patchSizeT, self.patchSizeY, self.patchSizeX, inputShape[2]])
+            self.weightImages = tf.reshape(tf.transpose(self.V1_W, [3, 0, 1, 2, 4]), [WShape[3]*WShape[0], WShape[1], WShape[2], WShape[4]])
             self.frameImages = self.inputImage[0, :, :, :, :]
-            self.reshaped_recon = undoTranspose5dData(self.recon, imageShape, self.VStrideT, self.VStrideY, self.VStrideX)
-            self.frameRecons = self.reshaped_recon[0, :, :, :, :]
+            self.frameRecons = self.recon[0, :, :, :, :]
 
 
         #Summaries
@@ -241,7 +238,7 @@ class ISTA_Time_Stride:
 
     def trainW(self):
         if (self.plotTimestep % self.plotPeriod == 0):
-            np_V1_W = self.sess.run(self.reshape_weight)
+            np_V1_W = self.sess.run(self.V1_W)
             make_plot_time(np_V1_W, self.plotDir+"dict_"+str(self.timestep))
 
         feedDict = {self.inputImage: self.currImg}

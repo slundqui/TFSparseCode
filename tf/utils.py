@@ -1,6 +1,21 @@
 import numpy as np
 import tensorflow as tf
 import pdb
+from scipy import sparse
+
+def convertToSparse5d(m):
+    [nb, nt, ny, nx, nf] = m.shape
+    mreshape = np.reshape(m, (nb, nt*ny*nx*nf))
+    return sparse.csr_matrix(mreshape)
+
+def save_sparse_csr(filename,array):
+    np.savez(filename,data = array.data ,indices=array.indices,
+             indptr =array.indptr, shape=array.shape )
+
+def load_sparse_csr(filename):
+    loader = np.load(filename)
+    return csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
+                         shape = loader['shape'])
 
 #Helper functions for initializing weights
 def weight_variable_fromnp(inNp, inName):
