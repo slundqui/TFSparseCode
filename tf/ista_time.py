@@ -56,8 +56,6 @@ class ISTA_Time:
            os.makedirs(self.ckptDir)
 
     def runModel(self):
-
-
         #Load summary
         self.writeSummary()
 

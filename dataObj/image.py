@@ -36,8 +36,9 @@ class imageObj:
         self.imgFiles = readList(imgList)
         self.numImages = len(self.imgFiles)
         self.shuffleIdx = range(self.numImages)
+        self.doShuffle = shuffle
         self.skip = skip
-        if(shuffle):
+        if(self.doShuffle):
             #Initialize random seed
             if(seed):
                 #Seed random
@@ -173,7 +174,8 @@ class imageObj:
         if(self.imgIdx >= self.numImages):
             print "Rewinding"
             self.imgIdx = 0
-            shuffle(range(self.numImages))
+            if(self.doShuffle):
+                random.shuffle(range(self.numImages))
         return outImg
 
     ##Get all segments of current image. This is what evaluation calls for testing
