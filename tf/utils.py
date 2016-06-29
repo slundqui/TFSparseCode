@@ -8,6 +8,11 @@ def convertToSparse5d(m):
     mreshape = np.reshape(m, (nb, nt*ny*nx*nf))
     return sparse.csr_matrix(mreshape)
 
+def convertToSparse4d(m):
+    [nb, ny, nx, nf] = m.shape
+    mreshape = np.reshape(m, (nb, ny*nx*nf))
+    return sparse.csr_matrix(mreshape)
+
 def save_sparse_csr(filename,array):
     np.savez(filename,data = array.data ,indices=array.indices,
              indptr =array.indptr, shape=array.shape )
@@ -55,8 +60,8 @@ def conv2d(x, W, inName, stride = None):
     else:
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME', name=inName)
 
-def conv2d_oneToMany(x, W, outShape, inName, tStride):
-    return tf.nn.conv2d_transpose(x, W, outShape, [1, tStride, tStride, 1], padding='SAME', name=inName)
+def conv2d_oneToMany(x, W, outShape, inName, yStride, xStride):
+    return tf.nn.conv2d_transpose(x, W, outShape, [1, yStride, xStride, 1], padding='SAME', name=inName)
 
 def maxpool_2x2(x, inName):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],

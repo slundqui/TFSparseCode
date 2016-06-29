@@ -186,40 +186,37 @@ class ISTA_Time:
                 self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-15)
 
 
-            #Summaries
-            self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
-            self.s_recon = tf.scalar_summary('recon error', self.reconError, name="reconError")
-            self.s_errorStd= tf.scalar_summary('errorStd', self.errorStd, name="errorStd")
-            self.s_l1= tf.scalar_summary('l1 sparsity', self.l1Sparsity, name="l1Sparsity")
-            self.s_l1_mean = tf.scalar_summary('l1 mean', self.l1_mean, name="l1Mean")
-            self.s_s_nnz = tf.scalar_summary('nnz', self.underThresh, name="nnz")
+        #Summaries
+        self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
+        self.s_recon = tf.scalar_summary('recon error', self.reconError, name="reconError")
+        self.s_errorStd= tf.scalar_summary('errorStd', self.errorStd, name="errorStd")
+        self.s_l1= tf.scalar_summary('l1 sparsity', self.l1Sparsity, name="l1Sparsity")
+        self.s_l1_mean = tf.scalar_summary('l1 mean', self.l1_mean, name="l1Mean")
+        self.s_s_nnz = tf.scalar_summary('nnz', self.underThresh, name="nnz")
 
-            self.s_t_loss = tf.scalar_summary('t loss', self.t_loss, name="t_lossSum")
-            self.s_t_recon = tf.scalar_summary('t recon error', self.t_reconError, name="t_reconError")
-            self.s_t_errorStd= tf.scalar_summary('t errorStd', self.t_errorStd, name="t_errorStd")
-            self.s_t_l1= tf.scalar_summary('t l1 sparsity', self.t_l1Sparsity, name="t_l1Sparsity")
-            self.s_t_l1_mean = tf.scalar_summary('t l1 mean', self.t_l1_mean, name="t_l1Mean")
+        self.s_t_loss = tf.scalar_summary('t loss', self.t_loss, name="t_lossSum")
+        self.s_t_recon = tf.scalar_summary('t recon error', self.t_reconError, name="t_reconError")
+        self.s_t_errorStd= tf.scalar_summary('t errorStd', self.t_errorStd, name="t_errorStd")
+        self.s_t_l1= tf.scalar_summary('t l1 sparsity', self.t_l1Sparsity, name="t_l1Sparsity")
+        self.s_t_l1_mean = tf.scalar_summary('t l1 mean', self.t_l1_mean, name="t_l1Mean")
 
-            self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
-            self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
-            self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
+        self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
+        self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
+        self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
 
-            self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
-            self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
+        self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
+        self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
 
-            self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
+        self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
-            #Images
-            self.i_w = tf.image_summary("weights", self.weightImages, max_images=self.numV)
-            self.i_orig = tf.image_summary("orig", self.frameImages, max_images=self.nT)
-            self.i_recon = tf.image_summary("recon", self.frameRecons, max_images=self.nT)
-            self.i_t_recon = tf.image_summary("t_recon", self.t_frameRecons, max_images=self.nT)
+        #Images
+        self.i_w = tf.image_summary("weights", self.weightImages, max_images=self.numV)
+        self.i_orig = tf.image_summary("orig", self.frameImages, max_images=self.nT)
+        self.i_recon = tf.image_summary("recon", self.frameRecons, max_images=self.nT)
+        self.i_t_recon = tf.image_summary("t_recon", self.t_frameRecons, max_images=self.nT)
 
-            #Define saver
-            #We only save weights, not V1_A
-            #This doesn't work, as the optimizers itself have variables that we don't have access to
-            #self.saver = tf.train.Saver(var_list=[self.V1_W])
-            self.saver = tf.train.Saver()
+        #Define saver
+        self.saver = tf.train.Saver()
 
         #Initialize
         #Load checkpoint if flag set

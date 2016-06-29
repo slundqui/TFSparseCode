@@ -6,19 +6,19 @@ from tf.ista import ISTA
 import numpy as np
 import pdb
 
-trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
-#testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
+#trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
+testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
-trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=True, seed=randImageSeed)
-#testDataObj = cifarObj(testImageLists, resizeMethod="pad")
+#trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
+testDataObj = cifarObj(testImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
 
 #ISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/cifar_batch16_stride2/",
+    'runDir':          "/cifar_eval/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -59,10 +59,9 @@ params = {
 }
 
 #Allocate tensorflow object
-tfObj = ISTA(params, trainDataObj)
+tfObj = ISTA(params, testDataObj)
 print "Done init"
-
-tfObj.runModel()
+tfObj.evalSet(testDataObj, "/home/slundquist/mountData/tfLCA/cifar_eval/test_data_sparse/cifar_")
 print "Done run"
 
 tfObj.closeSess()
