@@ -4,7 +4,7 @@ import tensorflow as tf
 from plots.plotWeights import make_plot
 import os
 import h5py
-from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr, load_sparse_csr
+from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
 #import matplotlib.pyplot as plt
 from pvtools import writepvpfile
 
@@ -305,17 +305,19 @@ class ISTA:
         numImages = evalDataObj.numImages
         #skip must be 1 for now
         assert(evalDataObj.skip == 1)
-        numIterations = int(np.ceil(numImages/self.batchSize))
+        numIterations = int(np.ceil(float(numImages)/self.batchSize))
 
         #Open h5py file
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
-            npV1_A = self.evalData(evalDataObj.getData(self.batchSize), displayPeriod=displayPeriod)
+            npV1_A = self.evalData(self.currImage, displayPeriod=displayPeriod)
             for b in range(self.batchSize):
                 frameIdx = it*self.batchSize + b
-                v1Sparse = convertToSparse4d(np.expand_dims(npV1_A[b, :, :, :], 0))
-                save_sparse_csr(outPrefix+str(frameIdx), v1Sparse)
+                if(frameIdx < numImages):
+                    v1Sparse = convertToSparse4d(np.expand_dims(npV1_A[b, :, :, :], 0))
+                    save_sparse_csr(outPrefix+str(frameIdx), v1Sparse)
+            self.currImg = self.dataObj.getData(self.batchSize)
 
     ##Evaluates inData, but in miniBatchSize batches for memory efficiency
     ##If an inGt is provided, will calculate summary as test set
@@ -372,16 +374,20 @@ class ISTA:
         self.saver.restore(self.sess, self.loadFile)
         print("Model %s loaded" % self.loadFile)
 
-    def writePvpWeights(self, outputPrefix):
+    def writePvpWeights(self, outputPrefix, rect=False):
         npw = self.sess.run(self.V1_W)
-        [nyp, nxp, numK, nfp] = npw.shape
+        [nyp, nxp, nfp, numK] = npw.shape
         filename = outputPrefix + ".pvp"
         #We need to get weights into pvp shape
         #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-        outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-        weightBuf = np.transpose(npw, [2, 0, 1, 3])
+        if(rect):
+            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
+        else:
+            outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
+        weightBuf = np.transpose(npw, [3, 0, 1, 2])
         outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-        outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
+        if(rect):
+            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
         pvp = {}
         pvp['values'] = outWeights
         pvp['time'] = np.array([0])

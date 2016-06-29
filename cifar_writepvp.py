@@ -10,15 +10,17 @@ trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
 #testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
-trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
+trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=True, seed=randImageSeed)
 #testDataObj = cifarObj(testImageLists, resizeMethod="pad")
+
+outPvpPrefix = "/home/slundquist/mountData/tfLCA/cifar_batch16_stride2/pvp/ista"
 
 #ISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/cifar_eval/",
+    'runDir':          "/cifar_batch16_stride2/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -32,7 +34,7 @@ params = {
     #Controls how often to write out to tensorboard
     'writeStep':       10, #300,
     #Threshold
-    'zeroThresh':      0,
+    'zeroThresh':      1e-3,
     #Flag for loading weights from checkpoint
     'load':            True,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_batch16_stride2.ckpt",
@@ -61,7 +63,8 @@ params = {
 #Allocate tensorflow object
 tfObj = ISTA(params, trainDataObj)
 print "Done init"
-tfObj.evalSet(trainDataObj, "/home/slundquist/mountData/tfLCA/cifar_eval/train_data_nosparse/cifar_")
+
+tfObj.writePvpWeights(outPvpPrefix, rect=False)
 print "Done run"
 
 tfObj.closeSess()

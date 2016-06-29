@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 import random
+from scipy import sparse
 
 def readList(filename):
     f = open(filename, 'r')
@@ -17,7 +18,7 @@ def readList(filename):
 """
 An object that handles data input
 """
-class imageObj:
+class dataObj(object):
     imgIdx = 0
     #inputShape = (32, 32, 3)
     maxDim = 0
@@ -206,9 +207,81 @@ class imageObj:
             #outGt[i, :] = data[1]
         return outData
 
-class cifarObj(imageObj):
+class cifarObj(dataObj):
     inputShape = (32, 32, 3)
 
-class imageNetObj(imageObj):
+class imageNetObj(dataObj):
     #inputShape = (64, 128, 3)
     inputShape = (64, 64, 3)
+
+class tfObj(dataObj):
+    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None):
+        self.inputShape = inputShape
+        gtFnList = readList(gtList)
+        self.gtIdx = [int(fn.split('/')[-2]) for fn in gtFnList]
+        #Call superclass constructor
+        super(tfObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed)
+        assert(len(self.gtIdx) ==  self.numImages)
+
+    def load_sparse_csr(self, filename):
+        loader = np.load(filename)
+        return sparse.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
+                             shape = loader['shape'])
+
+    def readImage(self, filename):
+        data = self.load_sparse_csr(filename)
+        outData = np.array(data.todense()).reshape((1, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        return outData
+
+    #Grabs the next image in the list. Will shuffle images when rewinding
+    #Num frames define how many in the clip it will grab
+    def nextImage(self, numFrames = 1):
+        assert(numFrames == 1)
+        startIdx = self.shuffleIdx[self.imgIdx]
+        if(numFrames == 1):
+            imgFile = self.imgFiles[startIdx]
+            outImg = self.readImage(imgFile)
+        else:
+            outImg = np.zeros((numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+            for f in range(numFrames):
+                imgFile = self.imgFiles[startIdx+f]
+                outImg[f, :, :, :] = self.readImage(imgFile)
+        outGt = np.zeros((10))
+        outGt[self.gtIdx[startIdx]] = 1
+
+        #Update imgIdx
+        self.imgIdx = self.imgIdx + self.skip
+
+        if(self.imgIdx >= self.numImages):
+            print "Rewinding"
+            self.imgIdx = 0
+            if(self.doShuffle):
+                random.shuffle(self.shuffleIdx)
+        return (outImg, outGt)
+
+    #Gets numExample images and stores it into an outer dimension.
+    #This is what TF object calls to get images for training
+    def getData(self, numExample, numFrames=1):
+        assert(numFrames == 1)
+        if(numFrames == 1):
+            outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        else:
+            outData = np.zeros((numExample, numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        outGt = np.zeros((numExample, 10))
+        for i in range(numExample):
+            (data, gt) = self.nextImage(numFrames)
+            outData[i, :, :, :] = data
+            outGt[i, :] = gt
+        return (outData, outGt)
+
+if __name__ == '__main__':
+    filelist = "/home/slundquist/mountData/tfLCA/cifar_eval/train_tmp.txt"
+    gtList =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
+    obj = tfObj(filelist, gtList, (16, 16, 128), resizeMethod="crop", shuffle=False, skip=1, seed=None)
+    obj.getData(1)
+
+
+
+
+
+
