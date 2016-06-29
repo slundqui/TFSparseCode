@@ -1,0 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+import cifar_traineval_sparse
+import cifar_traineval_nosparse
+import cifar_testeval_sparse
+import cifar_testeval_nosparse

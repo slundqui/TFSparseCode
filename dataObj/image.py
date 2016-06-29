@@ -175,7 +175,7 @@ class imageObj:
             print "Rewinding"
             self.imgIdx = 0
             if(self.doShuffle):
-                random.shuffle(range(self.numImages))
+                random.shuffle(self.shuffleIdx)
         return outImg
 
     ##Get all segments of current image. This is what evaluation calls for testing

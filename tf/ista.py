@@ -303,16 +303,19 @@ class ISTA:
 
     def evalSet(self, evalDataObj, outPrefix, displayPeriod=None):
         numImages = evalDataObj.numImages
-        numIterations = int(numImages/evalDataObj.skip)
-        #batchSize must be 1 for now
-        assert(self.batchSize == 1)
+        #skip must be 1 for now
+        assert(evalDataObj.skip == 1)
+        numIterations = int(np.ceil(numImages/self.batchSize))
+
         #Open h5py file
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
             npV1_A = self.evalData(evalDataObj.getData(self.batchSize), displayPeriod=displayPeriod)
-            v1Sparse = convertToSparse4d(npV1_A)
-            save_sparse_csr(outPrefix+str(it), v1Sparse)
+            for b in range(self.batchSize):
+                frameIdx = it*self.batchSize + b
+                v1Sparse = convertToSparse4d(np.expand_dims(npV1_A[b, :, :, :], 0))
+                save_sparse_csr(outPrefix+str(frameIdx), v1Sparse)
 
     ##Evaluates inData, but in miniBatchSize batches for memory efficiency
     ##If an inGt is provided, will calculate summary as test set
