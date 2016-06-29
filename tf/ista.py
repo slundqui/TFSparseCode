@@ -311,7 +311,7 @@ class ISTA:
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
-            npV1_A = self.evalData(self.currImage, displayPeriod=displayPeriod)
+            npV1_A = self.evalData(self.currImg, displayPeriod=displayPeriod)
             for b in range(self.batchSize):
                 frameIdx = it*self.batchSize + b
                 if(frameIdx < numImages):
