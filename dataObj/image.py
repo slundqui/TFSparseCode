@@ -32,13 +32,14 @@ class dataObj(object):
     #"max" will find the max dimension of the list of images, and pad the surrounding area
     #Additionally, if inMaxDim is set with resizeMethod of "max", it will explicitly set
     #the max dimension to inMaxDim
-    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None):
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
         self.resizeMethod=resizeMethod
         self.imgFiles = readList(imgList)
         self.numImages = len(self.imgFiles)
         self.shuffleIdx = range(self.numImages)
         self.doShuffle = shuffle
         self.skip = skip
+        self.getGT = getGT
         if(self.doShuffle):
             #Initialize random seed
             if(seed):
@@ -169,6 +170,11 @@ class dataObj(object):
             for f in range(numFrames):
                 imgFile = self.imgFiles[startIdx+f]
                 outImg[f, :, :, :] = self.readImage(imgFile)
+
+        if(getGT):
+            outGt = np.zeros((self.numClasses))
+            outGt[self.calcGT(startIdx)] = 1
+
         #Update imgIdx
         self.imgIdx = self.imgIdx + self.skip
 
@@ -177,7 +183,11 @@ class dataObj(object):
             self.imgIdx = 0
             if(self.doShuffle):
                 random.shuffle(self.shuffleIdx)
-        return outImg
+
+        if(getGT):
+            return (outImg, outGt)
+        else:
+            return outImg
 
     ##Get all segments of current image. This is what evaluation calls for testing
     #def allImages(self):
@@ -197,30 +207,54 @@ class dataObj(object):
             outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         else:
             outData = np.zeros((numExample, numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-        #outGt = np.zeros((numExample, 10))
+        if(self.getGT):
+            outGt = np.zeros((numExample, self.numClasses))
+
         for i in range(numExample):
-            data = self.nextImage(numFrames)
+            if(self.getGT):
+                data = self.nextImage(numFrames)
+            else:
+                (data, gt) = self.nextImage(numFrames)
+                outGt[i, :] = gt
+
             if(numFrames == 1):
                 outData[i, :, :, :] = data
             else:
                 outData[i, :, :, :, :] = data
-            #outGt[i, :] = data[1]
-        return outData
+        if(self.getGT):
+            return (outData, outGt)
+        else:
+            return outData
 
 class cifarObj(dataObj):
     inputShape = (32, 32, 3)
+    numClasses = 10
+
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
+        super(cifarObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
+        self.gtIdx = [int(fn.split('/')[-2]) for fn in self.imgFiles]
+
+    def calcGT(targetIdx):
+        return self.gtIdx[targetIdx]
+
 
 class imageNetObj(dataObj):
     #inputShape = (64, 128, 3)
     inputShape = (64, 64, 3)
+    numClasses = 1000
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
+        assert(getGT==False)
+        super(imagenetObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
 
+
+#TODO this object is specific for cifar right now. Do multiple inheritence for this obj in the future
 class tfObj(dataObj):
-    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None):
+    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True):
         self.inputShape = inputShape
         gtFnList = readList(gtList)
         self.gtIdx = [int(fn.split('/')[-2]) for fn in gtFnList]
         #Call superclass constructor
-        super(tfObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed)
+        super(tfObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
         assert(len(self.gtIdx) ==  self.numImages)
 
     def load_sparse_csr(self, filename):
@@ -233,46 +267,18 @@ class tfObj(dataObj):
         outData = np.array(data.todense()).reshape((1, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         return outData
 
-    #Grabs the next image in the list. Will shuffle images when rewinding
-    #Num frames define how many in the clip it will grab
+    def calcGT(targetIdx):
+        return self.gtIdx[targetIdx]
+
     def nextImage(self, numFrames = 1):
         assert(numFrames == 1)
-        startIdx = self.shuffleIdx[self.imgIdx]
-        if(numFrames == 1):
-            imgFile = self.imgFiles[startIdx]
-            outImg = self.readImage(imgFile)
-        else:
-            outImg = np.zeros((numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-            for f in range(numFrames):
-                imgFile = self.imgFiles[startIdx+f]
-                outImg[f, :, :, :] = self.readImage(imgFile)
-        outGt = np.zeros((10))
-        outGt[self.gtIdx[startIdx]] = 1
-
-        #Update imgIdx
-        self.imgIdx = self.imgIdx + self.skip
-
-        if(self.imgIdx >= self.numImages):
-            print "Rewinding"
-            self.imgIdx = 0
-            if(self.doShuffle):
-                random.shuffle(self.shuffleIdx)
-        return (outImg, outGt)
+        return super(tfObj, self).nextImage(numFrames)
 
     #Gets numExample images and stores it into an outer dimension.
     #This is what TF object calls to get images for training
     def getData(self, numExample, numFrames=1):
         assert(numFrames == 1)
-        if(numFrames == 1):
-            outData = np.zeros((numExample, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-        else:
-            outData = np.zeros((numExample, numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
-        outGt = np.zeros((numExample, 10))
-        for i in range(numExample):
-            (data, gt) = self.nextImage(numFrames)
-            outData[i, :, :, :] = data
-            outGt[i, :] = gt
-        return (outData, outGt)
+        return super(tfObj, self).getData(numExample, numFrames)
 
 if __name__ == '__main__':
     filelist = "/home/slundquist/mountData/tfLCA/cifar_eval/train_tmp.txt"
