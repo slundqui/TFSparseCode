@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 from dataObj.image import tfObj
 from tf.slp_sparse_code import SLP
 import numpy as np
@@ -13,14 +13,14 @@ testFileList = "/home/slundquist/mountData/tfLCA/cifar_eval/test.txt"
 testGtList =  "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 
 #Get object from which tensorflow will pull data from
-trainDataObj = tfObj(trainFileList, trainGtList, (16, 16, 128), resizeMethod="crop", shuffle=False, skip=1, seed=None)
-testDataObj = tfObj(testFileList, testGtList, (16, 16, 128), resizeMethod="crop", shuffle=False, skip=1, seed=None)
+trainDataObj = tfObj(trainFileList, trainGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
+testDataObj = tfObj(testFileList, testGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
 
 params = {
     #Base output directory
-    'outDir':          "/home/slundquist/mountData/DeepGAP/",
+    'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/cifar/",
+    'runDir':          "/cifar_ista_slp/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -39,14 +39,14 @@ params = {
     #Input vgg file for preloaded weights
     'pvpWeightFile':   "/home/slundquist/mountData/tfLCA/cifar_train/pvp/ista.pvp",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #Num iterations
-    'outerSteps':      1000, #1000000,
+    'outerSteps':      10000000, #1000000,
     'innerSteps':      50, #300,
     #Batch size
-    'batchSize':       32,
+    'batchSize':       128,
     #Learning rate for optimizer
-    'learningRate':    1e-5,
+    'learningRate':    1e-4,
     'numClasses':      10,
 
     #####ISTA PARAMS######

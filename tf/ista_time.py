@@ -4,7 +4,7 @@ import tensorflow as tf
 from plots.plotWeights import make_plot_time
 import os
 import h5py
-from .utils import sparse_weight_variable, weight_variable, node_variable, conv3d, transpose5dData, transpose5dWeight, undoTranspose5dData, convertToSparse5d, save_sparse_csr, load_sparse_csr
+from .utils import sparse_weight_variable, weight_variable, node_variable, conv3d, transpose5dData, transpose5dWeight, undoTranspose5dData, convertToSparse5d, save_sparse_csr
 #import matplotlib.pyplot as plt
 from pvtools import writepvpfile
 

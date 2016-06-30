@@ -89,18 +89,24 @@ class SLP:
         #Running on GPU
         with tf.device(self.device):
             self.imageShape = (self.batchSize, inputShape[0]*self.VStrideY, inputShape[1]*self.VStrideX, 3)
+            self.weightShape = (inputShape[2]*8, self.numClasses) #4 for pooling output, 2 for rectification
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.input = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
+                #Negate, concat, and rectify
+                self.neg_input = self.input * -1
+                self.relu_input = tf.nn.relu(tf.concat(3, [self.input, self.neg_input]))
                 self.gt = node_variable([self.batchSize, self.numClasses], "gt")
                 #Model variables for convolutions
 
             with tf.name_scope("SLP"):
                 #Max pooled values
-                self.W_slp = weight_variable_xavier((inputShape[2], self.numClasses), "slp_w", False)
+                self.W_slp = weight_variable_xavier(self.weightShape, "slp_w", False)
                 self.B_slp = bias_variable([self.numClasses], "slp_b")
-                self.pooled = tf.reduce_max(self.input, reduction_indices=[1, 2])
-                self.est = tf.nn.softmax(tf.matmul(self.pooled, self.W_slp) + self.B_slp)
+                self.pooled = tf.nn.max_pool(self.relu_input, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
+                self.flat_pooled = tf.reshape(self.pooled, [-1, 2*2*inputShape[2]*2])
+                #self.pooled = tf.reduce_max(self.relu_input, reduction_indices=[1, 2])
+                self.est = tf.nn.softmax(tf.matmul(self.flat_pooled, self.W_slp) + self.B_slp)
 
             with tf.name_scope("recon"):
                 self.W_dict = weight_variable_fromnp(npWeights, "W_dict")
@@ -176,7 +182,6 @@ class SLP:
                 self.train_writer.add_summary(summary, self.timestep)
             if(i%self.progress == 0):
                 print "Timestep ", self.timestep
-            pdb.set_trace()
             self.timestep+=1
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
@@ -200,7 +205,6 @@ class SLP:
         if(inGt != None):
             summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
             self.test_writer.add_summary(summary, self.timestep)
-        pdb.set_trace()
         #if(plot and inGt != None):
         #    filename = self.plotDir + "test_" + str(self.timestep) + ".png"
         #    self.evalAndPlotCam(feedDict, filename)
