@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
-from dataObj.image import tfObj
-from tf.slp_sparse_code import SLP
+from ..dataObj.image import tfObj
+from ..tf.slp_sparse_code import SLP
 import numpy as np
 import pdb
 

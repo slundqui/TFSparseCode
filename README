@@ -1,1 +1,7 @@
 A repository for playing around with sparse coding
+
+Directories:
+dataObj: Directory containing objects for reading data
+plots: Directory containing plotting tools
+tf: Directory containing tensorflow model building and running
+runs: Directory containing scripts for running models. Contains parameters. Must be ran from outermost directory

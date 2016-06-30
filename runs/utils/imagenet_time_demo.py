@@ -13,7 +13,7 @@ trainDataObj = imageNetObj(trainImageLists, resizeMethod="crop", shuffle=True, s
 #ISTA params
 params = {
     #Base output directory
-    'outDir':          "/home/sheng/mountData/tfLCA/",
+    'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
     'runDir':          "/imagenetTime_demo/",
     'tfDir':           "/tfout",
@@ -32,7 +32,7 @@ params = {
     'zeroThresh':      1e-4,
     #Flag for loading weights from checkpoint
     'load':            True,
-    'loadFile':        "/home/sheng/mountData/tfLCA/saved/imagenet_spacetime.ckpt",
+    'loadFile':        "/home/slundquist/mountData/tfLCA/saved/imagenet_spacetime.ckpt",
     #Device to run on
     'device':          '/gpu:0',
     #####ISTA PARAMS######

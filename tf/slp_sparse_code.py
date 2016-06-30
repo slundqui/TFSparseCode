@@ -1,7 +1,7 @@
 import pdb
 import numpy as np
 import tensorflow as tf
-from utils import *
+from .utils import *
 import os
 import matplotlib.pyplot as plt
 
