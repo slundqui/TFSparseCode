@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
-from ..dataObj.image import cifarObj
-from ..tf.slp_sparse_code import SLP
+from dataObj.image import cifarObj
+from tf.supervised_control import Supervised
 import numpy as np
 import pdb
 
@@ -17,7 +17,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/cifar_ista_slp/",
+    'runDir':          "/cifar_sup/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -56,7 +56,7 @@ params = {
 
 #Allocate tensorflow object
 #This will build the graph
-tfObj = SLP(params, trainDataObj.inputShape)
+tfObj = Supervised(params, trainDataObj.inputShape)
 
 print "Done init"
 tfObj.runModel(trainDataObj, testDataObj = testDataObj)

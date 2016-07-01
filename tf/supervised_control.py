@@ -5,7 +5,7 @@ from .utils import *
 import os
 import matplotlib.pyplot as plt
 
-class SLP:
+class Supervised:
     #Global timestep
     timestep = 0
     plotTimestep = 0
@@ -83,16 +83,10 @@ class SLP:
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
-        if(self.pvpWeightFile):
-            npWeights = load_pvp_weights(self.pvpWeightFile)
-        else:
-            print "Must load from weights"
-            assert(0)
-
-        #Running on GPU
         with tf.device(self.device):
             self.imageShape = (self.batchSize, inputShape[0], inputShape[1], inputShape[2])
             self.encodeWeightShape = (self.patchSizeY, self.patchSizeX, inputShape[2], self.numV)
+            self.weightShape = (4*self.numV, self.numClasses)
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.input = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
@@ -102,17 +96,17 @@ class SLP:
             with tf.name_scope("Encode"):
                 self.W_encode = weight_variable_xavier(self.encodeWeightShape, "encode_w", True)
                 self.B_encode = bias_variable([self.numV], "encode_b")
-                self.h_encode = conv2d(self.input, W_encode, "h_encode", [1, 2, 2, 1])
+                self.h_encode = tf.nn.relu(conv2d(self.input, self.W_encode, "h_encode", [1, 2, 2, 1]) + self.B_encode)
 
             with tf.name_scope("SLP"):
                 #Max pooled values
                 self.W_slp = weight_variable_xavier(self.weightShape, "slp_w", False)
                 self.B_slp = bias_variable([self.numClasses], "slp_b")
                 if(self.maxPool):
-                    self.pooled = tf.nn.max_pool(self.relu_input, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
+                    self.pooled = tf.nn.max_pool(self.h_encode, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
                 else:
-                    self.pooled = tf.nn.avg_pool(self.relu_input, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
-                self.flat_pooled = tf.reshape(self.pooled, [-1, 2*2*inputShape[2]*2])
+                    self.pooled = tf.nn.avg_pool(self.h_encode, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
+                self.flat_pooled = tf.reshape(self.pooled, [-1, 4*self.numV])
                 #self.pooled = tf.reduce_max(self.relu_input, reduction_indices=[1, 2])
                 self.est = tf.nn.softmax(tf.matmul(self.flat_pooled, self.W_slp) + self.B_slp)
 

@@ -171,7 +171,7 @@ class dataObj(object):
                 imgFile = self.imgFiles[startIdx+f]
                 outImg[f, :, :, :] = self.readImage(imgFile)
 
-        if(getGT):
+        if(self.getGT):
             outGt = np.zeros((self.numClasses))
             outGt[self.calcGT(startIdx)] = 1
 
@@ -184,7 +184,7 @@ class dataObj(object):
             if(self.doShuffle):
                 random.shuffle(self.shuffleIdx)
 
-        if(getGT):
+        if(self.getGT):
             return (outImg, outGt)
         else:
             return outImg
@@ -212,10 +212,10 @@ class dataObj(object):
 
         for i in range(numExample):
             if(self.getGT):
-                data = self.nextImage(numFrames)
-            else:
                 (data, gt) = self.nextImage(numFrames)
                 outGt[i, :] = gt
+            else:
+                data = self.nextImage(numFrames)
 
             if(numFrames == 1):
                 outData[i, :, :, :] = data
@@ -234,7 +234,7 @@ class cifarObj(dataObj):
         super(cifarObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
         self.gtIdx = [int(fn.split('/')[-2]) for fn in self.imgFiles]
 
-    def calcGT(targetIdx):
+    def calcGT(self, targetIdx):
         return self.gtIdx[targetIdx]
 
 
@@ -267,7 +267,7 @@ class tfObj(dataObj):
         outData = np.array(data.todense()).reshape((1, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         return outData
 
-    def calcGT(targetIdx):
+    def calcGT(self, targetIdx):
         return self.gtIdx[targetIdx]
 
     def nextImage(self, numFrames = 1):
