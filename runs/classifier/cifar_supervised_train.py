@@ -44,6 +44,8 @@ params = {
     'learningRate':    1e-4,
     'numClasses':      10,
 
+    'epsilon': 1e-8,
+
     #####ISTA PARAMS######
     'VStrideY':        2,
     'VStrideX':        2,

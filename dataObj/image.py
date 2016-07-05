@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pdb
 import random
 from scipy import sparse
+from pvtools import readpvpfile
 
 def readList(filename):
     f = open(filename, 'r')
@@ -148,7 +149,7 @@ class dataObj(object):
 
     #Reads image provided in the argument, resizes, and normalizes image
     #Returns the image
-    def readImage(self, filename):
+    def readImage(self, filename, frameIdx):
         image = imread(filename)
         image = (self.resizeImage(image).astype(np.float32)/255)
         image = (image-np.mean(image))/np.std(image)
@@ -164,12 +165,12 @@ class dataObj(object):
         startIdx = self.shuffleIdx[self.imgIdx]
         if(numFrames == 1):
             imgFile = self.imgFiles[startIdx]
-            outImg = self.readImage(imgFile)
+            outImg = self.readImage(imgFile, startIdx)
         else:
             outImg = np.zeros((numFrames, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
             for f in range(numFrames):
                 imgFile = self.imgFiles[startIdx+f]
-                outImg[f, :, :, :] = self.readImage(imgFile)
+                outImg[f, :, :, :] = self.readImage(imgFile, startIdx+f)
 
         if(self.getGT):
             outGt = np.zeros((self.numClasses))
@@ -249,6 +250,7 @@ class imageNetObj(dataObj):
 
 #TODO this object is specific for cifar right now. Do multiple inheritence for this obj in the future
 class tfObj(dataObj):
+    numClasses = 10
     def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True):
         self.inputShape = inputShape
         gtFnList = readList(gtList)
@@ -262,7 +264,7 @@ class tfObj(dataObj):
         return sparse.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
                              shape = loader['shape'])
 
-    def readImage(self, filename):
+    def readImage(self, filename, frameIdx):
         data = self.load_sparse_csr(filename)
         outData = np.array(data.todense()).reshape((1, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         return outData
@@ -280,14 +282,42 @@ class tfObj(dataObj):
         assert(numFrames == 1)
         return super(tfObj, self).getData(numExample, numFrames)
 
+class pvpObj(dataObj):
+    numClasses = 10
+    #imgList here is the pvp file
+    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True):
+        self.inputShape = inputShape
+        #Read gt file
+        #Read pvp file
+        self.inData = readpvpfile(imgList, progressPeriod = 100)["values"]
+        [numFrames, numVals] = self.inData.shape
+        #Call superclass constructor
+        super(pvpObj, self).__init__(gtList, resizeMethod, shuffle, skip, seed, getGT)
+        self.gtIdx = [int(fn.split('/')[-2]) for fn in self.imgFiles]
+        assert(len(self.gtIdx) ==  numFrames)
+
+    def readImage(self, filename, frameIdx):
+        outData = self.inData.getrow(frameIdx).toarray()
+        outData = np.reshape(outData, self.inputShape)
+        return outData
+
+    def calcGT(self, targetIdx):
+        return self.gtIdx[targetIdx]
+
+    def nextImage(self, numFrames = 1):
+        assert(numFrames == 1)
+        return super(pvpObj, self).nextImage(numFrames)
+
+    #Gets numExample images and stores it into an outer dimension.
+    #This is what TF object calls to get images for training
+    def getData(self, numExample, numFrames=1):
+        assert(numFrames == 1)
+        return super(pvpObj, self).getData(numExample, numFrames)
+
 if __name__ == '__main__':
     filelist = "/home/slundquist/mountData/tfLCA/cifar_eval/train_tmp.txt"
     gtList =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
     obj = tfObj(filelist, gtList, (16, 16, 128), resizeMethod="crop", shuffle=False, skip=1, seed=None)
     obj.getData(1)
-
-
-
-
 
 

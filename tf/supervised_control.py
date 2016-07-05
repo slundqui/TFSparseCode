@@ -4,6 +4,7 @@ import tensorflow as tf
 from .utils import *
 import os
 import matplotlib.pyplot as plt
+from plots import make_plot
 
 class Supervised:
     #Global timestep
@@ -49,6 +50,8 @@ class Supervised:
         self.patchSizeX = params['patchSizeX']
         self.numV = params['numV']
         self.maxPool = params['maxPool']
+
+        self.epsilon = params['epsilon']
 
 
     #Make approperiate directories if they don't exist
@@ -112,7 +115,7 @@ class Supervised:
 
             with tf.name_scope("Loss"):
                 #Define loss
-                self.loss = tf.reduce_mean(-tf.reduce_sum(self.gt * tf.log(self.est), reduction_indices=[1]))
+                self.loss = tf.reduce_mean(-tf.reduce_sum(self.gt * tf.log(self.est+self.epsilon), reduction_indices=[1]))
 
             with tf.name_scope("Opt"):
                 #Define optimizer
@@ -187,9 +190,10 @@ class Supervised:
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
             print("Model saved in file: %s" % save_path)
-        #if(plot):
-        #    filename = self.plotDir + "train_" + str(self.timestep) + ".png"
-        #    self.evalAndPlotCam(feedDict, filename)
+        if(plot):
+            filename = self.plotDir + "weights_" + str(self.timestep) + ".png"
+            np_w = self.sess.run(self.W_encode,, feed_dict=feedDict)
+            make_plot(np_w, filename, order=[3, 0, 1, 2])
 
     #Evaluates all of inData at once
     #If an inGt is provided, will calculate summary as test set
