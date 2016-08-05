@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import pdb
 
 def make_plot_time(weights_matrix, outPrefix):
-    print "Creating plot"
     assert(weights_matrix.ndim == 5)
     num_weights = weights_matrix.shape[3]
     patch_t = weights_matrix.shape[0]
@@ -55,3 +54,9 @@ def make_plot(weights_matrix, outFilename, order=[0, 1, 2, 3]):
 
     plt.imshow(outWeightMat)
     plt.savefig(outFilename)
+
+    plt.figure()
+    plt.hist(weights_matrix.flatten(), 50)
+    plt.savefig(outFilename + ".hist.png")
+
+

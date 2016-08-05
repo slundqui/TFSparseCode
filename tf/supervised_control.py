@@ -4,7 +4,7 @@ import tensorflow as tf
 from .utils import *
 import os
 import matplotlib.pyplot as plt
-from plots import make_plot
+from plots.plotWeights import make_plot
 
 class Supervised:
     #Global timestep
@@ -52,6 +52,9 @@ class Supervised:
         self.maxPool = params['maxPool']
 
         self.epsilon = params['epsilon']
+
+        self.regularizer = params['regularizer']
+        self.regWeight = params['regWeight']
 
 
     #Make approperiate directories if they don't exist
@@ -116,10 +119,22 @@ class Supervised:
             with tf.name_scope("Loss"):
                 #Define loss
                 self.loss = tf.reduce_mean(-tf.reduce_sum(self.gt * tf.log(self.est+self.epsilon), reduction_indices=[1]))
+                if(self.regularizer == "none"):
+                    self.reg_loss = self.loss
+                elif(self.regularizer == "weightsl1"):
+                    self.reg_loss = self.loss + self.regWeight * tf.reduce_mean(tf.abs(self.W_encode))
+                elif(self.regularizer == "weightsl2"):
+                    self.reg_loss = self.loss + self.regWeight * tf.reduce_mean(tf.square(self.W_encode))
+                elif(self.regularizer == "activitesl1"):
+                    self.reg_loss = self.loss + self.regWeight * tf.reduce_mean(tf.abs(self.h_encode))
+                elif(self.regularizer == "activitesl2"):
+                    self.reg_loss = self.loss + self.regWeight * tf.reduce_mean(tf.square(self.h_encode))
+                else:
+                    assert(0)
 
             with tf.name_scope("Opt"):
                 #Define optimizer
-                self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.loss)
+                self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.reg_loss)
 
             with tf.name_scope("Metric"):
                 self.correct = tf.equal(tf.argmax(self.gt, 1), tf.argmax(self.est, 1))
@@ -127,6 +142,7 @@ class Supervised:
 
         #Summaries
         tf.scalar_summary('loss', self.loss, name="loss")
+        tf.scalar_summary('reg_loss', self.reg_loss, name="reg_loss")
         tf.scalar_summary('accuracy', self.accuracy, name="accuracy")
 
         tf.histogram_summary('input', self.input, name="image")
@@ -192,7 +208,7 @@ class Supervised:
             print("Model saved in file: %s" % save_path)
         if(plot):
             filename = self.plotDir + "weights_" + str(self.timestep) + ".png"
-            np_w = self.sess.run(self.W_encode,, feed_dict=feedDict)
+            np_w = self.sess.run(self.W_encode, feed_dict=feedDict)
             make_plot(np_w, filename, order=[3, 0, 1, 2])
 
     #Evaluates all of inData at once

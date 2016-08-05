@@ -48,6 +48,8 @@ params = {
     #Learning rate for optimizer
     'learningRate':    1e-4,
     'numClasses':      10,
+    'verifyTrain':     False,
+    'verifyTest':      False,
 
     #####ISTA PARAMS######
     'VStrideY':        2,

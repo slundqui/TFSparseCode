@@ -8,7 +8,7 @@ from .utils import sparse_weight_variable, weight_variable, node_variable, conv2
 #import matplotlib.pyplot as plt
 from pvtools import writepvpfile
 
-class ISTA:
+class trueISTA:
     #Global timestep
     timestep = 0
     plotTimestep = 0
@@ -121,28 +121,29 @@ class ISTA:
                 self.t_error = self.scaled_inputImage - self.t_recon
 
             with tf.name_scope("Loss"):
-                self.reconError = tf.reduce_mean(tf.square(self.error))
-                self.l1Sparsity = tf.reduce_mean(tf.abs(self.V1_A))
+                self.reconError = tf.reduce_sum(tf.square(self.error))
+                self.l1Sparsity = tf.reduce_sum(tf.abs(self.V1_A))
                 #Define loss
                 self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
-                self.t_reconError = tf.reduce_mean(tf.square(self.t_error))
-                self.t_l1Sparsity = tf.reduce_mean(tf.abs(self.t_V1_A))
+                self.t_reconError = tf.reduce_sum(tf.square(self.t_error))
+                self.t_l1Sparsity = tf.reduce_sum(tf.abs(self.t_V1_A))
                 #Define loss
                 self.t_loss = self.t_reconError/2 + self.thresh * self.t_l1Sparsity
 
             with tf.name_scope("Opt"):
-                #Define optimizer
-                #self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
-                self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
-                        var_list=[
-                            self.V1_A
-                        ])
-                #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
-                #Minimizing weights with respect to the cutoff weights
-                #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.t_loss,
+                ##Define optimizer
+                ##self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
+                #self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
+                #        var_list=[
+                #            self.V1_A
+                #        ])
+                self.reconGrad = self.learningRateA * tf.gradients(self.reconError, [self.V1_A])[0]
+                self.newA = tf.nn.relu(tf.abs(self.V1_A - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
+                self.optimizerA = self.V1_A.assign(self.newA)
+
+                self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
                 #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
-                self.optimizerW = tf.train.MomentumOptimizer(self.learningRateW, .9).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])

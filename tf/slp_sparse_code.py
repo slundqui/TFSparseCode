@@ -49,6 +49,9 @@ class SLP:
         self.progress = params['progress']
         self.rectify = params['rectify']
 
+        self.verifyTrain = params['verifyTrain']
+        self.verifyTest = params['verifyTest']
+
     #Make approperiate directories if they don't exist
     def makeDirs(self):
         if not os.path.exists(self.runDir):
@@ -194,6 +197,17 @@ class SLP:
             if(i%self.progress == 0):
                 print "Timestep ", self.timestep
             self.timestep+=1
+
+            if(self.verifyTrain):
+                recons = self.sess.run(self.recon, feed_dict=feedDict)
+                for b in range(self.batchSize):
+                    print "class: ", data[1][b, :]
+                    s_recon = recons[b, :, :, :]
+                    s_recon = (s_recon-s_recon.min())/(s_recon.max()-s_recon.min())
+                    plt.imshow(s_recon)
+                    plt.show()
+
+
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
             print("Model saved in file: %s" % save_path)
@@ -216,6 +230,15 @@ class SLP:
         if(inGt != None):
             summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
             self.test_writer.add_summary(summary, self.timestep)
+
+        if(self.verifyTest):
+            recons = self.sess.run(self.recon, feed_dict=feedDict)
+            for b in range(self.batchSize):
+                print "class: ", inGt[b, :]
+                s_recon = recons[b, :, :, :]
+                s_recon = (s_recon-s_recon.min())/(s_recon.max()-s_recon.min())
+                plt.imshow(s_recon)
+                plt.show()
         #if(plot and inGt != None):
         #    filename = self.plotDir + "test_" + str(self.timestep) + ".png"
         #    self.evalAndPlotCam(feedDict, filename)

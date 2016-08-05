@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from dataObj.image import cifarObj
-from tf.ista import ISTA
+from tf.trueIsta import trueISTA
 #from plot.roc import makeRocCurve
 import numpy as np
 import pdb
@@ -18,36 +18,36 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/cifar_nf256/",
+    'runDir':          "/trueIsta_cifar_nf256/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
     'saveFile':        "/save-model",
-    'savePeriod':      200, #In terms of displayPeriod
+    'savePeriod':      100, #In terms of displayPeriod
     #output plots directory
     'plotDir':         "plots/",
-    'plotPeriod':      200, #With respect to displayPeriod
+    'plotPeriod':      100, #With respect to displayPeriod
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       400,
+    'writeStep':       10,
     #Threshold
-    'zeroThresh':      1e-3,
+    'zeroThresh':      0.0,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_nf128.ckpt",
     #Device to run on
     'device':          '/gpu:1',
     #####ISTA PARAMS######
-    'numIterations':   100000,
-    'displayPeriod':   400,
+    'numIterations':   10,
+    'displayPeriod':   1000,
     #Batch size
     'batchSize':       32,
     #Learning rate for optimizer
-    'learningRateA':   5e-4,
-    'learningRateW':   1e-3,
+    'learningRateA':   1e-2,
+    'learningRateW':   1e-4,
     #Lambda in energy function
-    'thresh':          .3,
+    'thresh':          .015,
     #Number of features in V1
     'numV':            256,
     #Stride of V1
@@ -56,10 +56,12 @@ params = {
     #Patch size
     'patchSizeY':      12,
     'patchSizeX':      12,
+
+    'fista': True,
 }
 
 #Allocate tensorflow object
-tfObj = ISTA(params, trainDataObj)
+tfObj = trueISTA(params, trainDataObj)
 print "Done init"
 
 tfObj.runModel()

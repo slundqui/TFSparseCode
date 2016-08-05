@@ -11,7 +11,7 @@ testList =  "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 
 #Get object from which tensorflow will pull data from
 trainDataObj = cifarObj(trainList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True)
-testDataObj = cifarObj(testList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True)
+testDataObj = cifarObj(testList, resizeMethod="crop", shuffle=False, skip=1, seed=None, getGT=True)
 
 params = {
     #Base output directory
@@ -34,12 +34,12 @@ params = {
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/DeepGAP/saved/cifar.ckpt",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #Num iterations
     'outerSteps':      500, #1000000,
     'innerSteps':      100, #300,
     #Batch size
-    'batchSize':       128,
+    'batchSize':       100,
     #Learning rate for optimizer
     'learningRate':    1e-4,
     'numClasses':      10,
@@ -59,13 +59,32 @@ params = {
     'maxPool':         True, #Controls max or avg pool
 }
 
+print "Done init"
+est = np.zeros((testDataObj.numImages))
+gt = np.zeros((testDataObj.numImages))
+
 #Allocate tensorflow object
 #This will build the graph
 tfObj = Supervised(params, trainDataObj.inputShape)
 
-print "Done init"
-tfObj.runModel(trainDataObj, testDataObj = testDataObj)
+assert(testDataObj.numImages % params["batchSize"] == 0)
+
+for i in range(testDataObj.numImages/params["batchSize"]):
+    print i*params["batchSize"], "out of", testDataObj.numImages
+    (inImage, inGt) = testDataObj.getData(params["batchSize"])
+    outVals = tfObj.evalModel(inImage, inGt = inGt, plot=False)
+    tfObj.timestep += 1
+    v = np.argmax(outVals, axis=1)
+
+    startIdx = i*batch
+    endIdx = startIdx + params["batchSize"]
+    est[startIdx:endIdx] = v
+    gt[startIdx:endIdx] = inGt
+
 print "Done run"
 
 tfObj.closeSess()
+
+numCorrect = len(np.nonzero(est == gt)[0])
+print "Accuracy: ", float(numCorrect)/testDataObj.numImages
 
