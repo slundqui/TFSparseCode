@@ -111,10 +111,10 @@ class ISTA(base):
                 #        ])
                 self.reconGrad = self.learningRateA * tf.gradients(self.reconError, [self.V1_A])[0]
                 #We add epslon to avoid taking sign of 0 if v1_a is 0
-                self.newA = tf.nn.relu(tf.abs(self.V1_A - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A + tf.sign(self.reconGrad)*self.epsilon)
+                self.newA = tf.nn.relu(tf.abs(self.V1_A - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
                 self.optimizerA = self.V1_A.assign(self.newA)
 
-                self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
+                self.optimizerW = tf.train.AdadeltaOptimizer(1).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])

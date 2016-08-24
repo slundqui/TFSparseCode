@@ -16,7 +16,7 @@ trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=True, seed=
 #ISTA params
 params = {
     #Base output directory
-    'outDir':          "/home/slundquist/mountData/tfLCA/",
+    'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
     'runDir':          "/ista_cifar_nf256/",
     'tfDir':           "/tfout",
@@ -37,7 +37,7 @@ params = {
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_nf128.ckpt",
     #Device to run on
-    'device':          '/cpu:0',
+    'device':          '/gpu:0',
     #####ISTA PARAMS######
     'numIterations':   100000,
     'displayPeriod':   1000,
@@ -47,7 +47,7 @@ params = {
     'learningRateA':   1e-2,
     'learningRateW':   1e-4,
     #Lambda in energy function
-    'thresh':          .015,
+    'thresh':          .02,
     #Number of features in V1
     'numV':            256,
     #Stride of V1
