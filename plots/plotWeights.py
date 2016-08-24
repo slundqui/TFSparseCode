@@ -48,8 +48,10 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
 
         weight_patch = permute_weights[weight, :, :, :]
 
-        scale_factor = (weight_patch.max() - weight_patch.min())
-        weight_patch = (weight_patch.astype(np.float32) - weight_patch.min()) / scale_factor
+        scaleVal = np.max([np.fabs(weight_patch.max()), np.fabs(weight_patch.min())])
+
+        scale_factor = 2*scaleVal
+        weight_patch = (weight_patch.astype(np.float32) - scaleVal) / scale_factor
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
     plt.imshow(outWeightMat)
