@@ -1,35 +1,18 @@
 import pdb
 import numpy as np
 import tensorflow as tf
-from plots.plotWeights import make_plot
+from plots.plotWeights import plot_weights
 import os
 import h5py
 from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
 #import matplotlib.pyplot as plt
 from pvtools import writepvpfile
+from base import base
 
-class trueISTA:
-    #Global timestep
-    timestep = 0
-    plotTimestep = 0
-
+class AdamSP(base):
     #Sets dictionary of params to member variables
     def loadParams(self, params):
-        #Initialize tf parameters here
-        self.outDir = params['outDir']
-        self.runDir = self.outDir + params['runDir']
-        self.ckptDir = self.runDir + params['ckptDir']
-        self.plotDir = self.runDir + params['plotDir']
-        self.tfDir = self.runDir + params['tfDir']
-        self.saveFile = self.ckptDir + params['saveFile']
-        self.load = params['load']
-        self.loadFile = params['loadFile']
-        self.numIterations= params['numIterations']
-        self.displayPeriod = params['displayPeriod']
-        self.savePeriod = params['savePeriod']
-        self.plotPeriod = params['plotPeriod']
-        self.device = params['device']
-        self.batchSize = params['batchSize']
+        super(AdamSP, self).loadParams(params)
         self.learningRateA = params['learningRateA']
         self.learningRateW = params['learningRateW']
         self.thresh = params['thresh']
@@ -38,23 +21,10 @@ class trueISTA:
         self.VStrideX = params['VStrideX']
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
-        self.progress = params['progress']
-        self.writeStep = params['writeStep']
         self.zeroThresh = params['zeroThresh']
-
-    #Make approperiate directories if they don't exist
-    def makeDirs(self):
-        if not os.path.exists(self.runDir):
-           os.makedirs(self.runDir)
-        if not os.path.exists(self.plotDir):
-           os.makedirs(self.plotDir)
-        if not os.path.exists(self.ckptDir):
-           os.makedirs(self.ckptDir)
+        #self.epsilon = params['epsilon']
 
     def runModel(self):
-        #Load summary
-        self.writeSummary()
-
         #Normalize weights to start
         self.normWeights()
 
@@ -70,12 +40,7 @@ class trueISTA:
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
-        self.loadParams(params)
-        self.makeDirs()
-        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        self.dataObj = dataObj
-        self.inputShape = self.dataObj.inputShape
-        self.buildModel(self.dataObj.inputShape)
+        super(AdamSP, self).__init__(params, dataObj)
         self.currImg = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
@@ -103,7 +68,7 @@ class trueISTA:
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
                 self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
 
-            with tf.name_scope("ISTA"):
+            with tf.name_scope("Encoding"):
                 #Soft threshold
                 self.V1_A= weight_variable(self.VShape, "V1_A", 1e-3)
                 self.zeroConst = tf.zeros(self.VShape)
@@ -121,29 +86,28 @@ class trueISTA:
                 self.t_error = self.scaled_inputImage - self.t_recon
 
             with tf.name_scope("Loss"):
-                self.reconError = tf.reduce_sum(tf.square(self.error))
-                self.l1Sparsity = tf.reduce_sum(tf.abs(self.V1_A))
+                self.reconError = tf.reduce_mean(tf.square(self.error))
+                self.l1Sparsity = tf.reduce_mean(tf.abs(self.V1_A))
                 #Define loss
                 self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
-                self.t_reconError = tf.reduce_sum(tf.square(self.t_error))
-                self.t_l1Sparsity = tf.reduce_sum(tf.abs(self.t_V1_A))
+                self.t_reconError = tf.reduce_mean(tf.square(self.t_error))
+                self.t_l1Sparsity = tf.reduce_mean(tf.abs(self.t_V1_A))
                 #Define loss
                 self.t_loss = self.t_reconError/2 + self.thresh * self.t_l1Sparsity
 
             with tf.name_scope("Opt"):
-                ##Define optimizer
-                ##self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
-                #self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
-                #        var_list=[
-                #            self.V1_A
-                #        ])
-                self.reconGrad = self.learningRateA * tf.gradients(self.reconError, [self.V1_A])[0]
-                self.newA = tf.nn.relu(tf.abs(self.V1_A - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
-                self.optimizerA = self.V1_A.assign(self.newA)
-
-                self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
-                #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
+                #Define optimizer
+                #self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
+                self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
+                        var_list=[
+                            self.V1_A
+                        ])
+                #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
+                #Minimizing weights with respect to the cutoff weights
+                #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.t_loss,
+                self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
+                #self.optimizerW = tf.train.MomentumOptimizer(self.learningRateW, .9).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])
@@ -184,63 +148,6 @@ class trueISTA:
 
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
-        #Images
-        self.i_w = tf.image_summary("weights", self.weightImages, max_images=self.numV)
-        self.i_orig = tf.image_summary("orig", self.inputImage)
-        self.i_recon = tf.image_summary("recon", self.recon)
-        self.i_t_recon = tf.image_summary("t_recon", self.t_recon)
-
-        #Define saver
-        self.saver = tf.train.Saver()
-
-        #Initialize
-        #Load checkpoint if flag set
-        if(self.load):
-           self.loadModel()
-           ##We only load weights, so we need to initialize A
-           #un_vars = list(tf.get_variable(name) for name in self.sess.run(tf.report_uninitialized_variables(tf.all_variables())))
-           #tf.initialize_variables(un_vars)
-        else:
-           self.initSess()
-
-    #Initializes session.
-    def initSess(self):
-        self.sess.run(tf.initialize_all_variables())
-
-    #Allocates and specifies the output directory for tensorboard summaries
-    def writeSummary(self):
-        self.mergedSummary = tf.merge_summary([
-            self.s_loss,
-            self.s_recon,
-            self.s_l1,
-            self.s_l1_mean,
-            self.h_input,
-            self.h_recon,
-            self.h_v1_w,
-            self.h_v1_a,
-            self.h_log_v1_a,
-            self.h_normVals,
-            self.s_errorStd,
-            self.s_s_nnz,
-            #Take these out after
-            self.s_t_loss,
-            self.s_t_recon,
-            self.s_t_errorStd,
-            self.s_t_l1,
-            self.s_t_l1_mean
-            ])
-        self.imageSummary = tf.merge_summary([
-            #self.i_w,
-            self.i_orig,
-            self.i_recon,
-            self.i_t_recon
-            ])
-        self.train_writer = tf.train.SummaryWriter(self.tfDir + "/train", self.sess.graph)
-        #self.test_writer = tf.train.SummaryWriter(self.tfDir+ "/test")
-
-    def closeSess(self):
-        self.sess.close()
-
     #Trains model for numSteps
     def trainA(self, save):
         #Define session
@@ -269,10 +176,7 @@ class trueISTA:
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
-            make_plot(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
-            #Write summary
-            summary = self.sess.run(self.imageSummary, feed_dict=feedDict)
-            self.train_writer.add_summary(summary, self.timestep)
+            plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
@@ -373,27 +277,22 @@ class trueISTA:
     #    #Return output data
     #    return outData
 
-    #Loads a tf checkpoint
-    def loadModel(self):
-        self.saver.restore(self.sess, self.loadFile)
-        print("Model %s loaded" % self.loadFile)
-
-    def writePvpWeights(self, outputPrefix, rect=False):
-        npw = self.sess.run(self.V1_W)
-        [nyp, nxp, nfp, numK] = npw.shape
-        filename = outputPrefix + ".pvp"
-        #We need to get weights into pvp shape
-        #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-        if(rect):
-            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-        else:
-            outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
-        weightBuf = np.transpose(npw, [3, 0, 1, 2])
-        outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-        if(rect):
-            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
-        pvp = {}
-        pvp['values'] = outWeights
-        pvp['time'] = np.array([0])
-        writepvpfile(filename, pvp)
+    #def writePvpWeights(self, outputPrefix, rect=False):
+    #    npw = self.sess.run(self.V1_W)
+    #    [nyp, nxp, nfp, numK] = npw.shape
+    #    filename = outputPrefix + ".pvp"
+    #    #We need to get weights into pvp shape
+    #    #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
+    #    if(rect):
+    #        outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
+    #    else:
+    #        outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
+    #    weightBuf = np.transpose(npw, [3, 0, 1, 2])
+    #    outWeights[0, 0, 0:numK, :, :, :] = weightBuf
+    #    if(rect):
+    #        outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
+    #    pvp = {}
+    #    pvp['values'] = outWeights
+    #    pvp['time'] = np.array([0])
+    #    writepvpfile(filename, pvp)
 

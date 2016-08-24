@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 
-def make_plot_time(weights_matrix, outPrefix):
+def plot_weights_time(weights_matrix, outPrefix):
     assert(weights_matrix.ndim == 5)
     num_weights = weights_matrix.shape[3]
     patch_t = weights_matrix.shape[0]
@@ -12,10 +12,10 @@ def make_plot_time(weights_matrix, outPrefix):
 
     for t in range(patch_t):
         outFilename = outPrefix + "_frame" + str(t) + ".png"
-        make_plot(weights_matrix[t, :, :, :, :], outFilename, order=[2, 0, 1, 3])
+        plot_weights(weights_matrix[t, :, :, :, :], outFilename, order=[2, 0, 1, 3])
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
-def make_plot(weights_matrix, outFilename, order=[0, 1, 2, 3]):
+def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
     print "Creating plot"
     assert(weights_matrix.ndim == 4)
     num_weights = weights_matrix.shape[order[0]]

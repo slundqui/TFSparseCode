@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from dataObj.image import cifarObj
-from tf.trueIsta import trueISTA
+from tf.ista import ISTA
 #from plot.roc import makeRocCurve
 import numpy as np
 import pdb
@@ -18,7 +18,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfLCA/",
     #Inner run directory
-    'runDir':          "/trueIsta_cifar_nf256/",
+    'runDir':          "/ista_cifar_nf256/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -30,19 +30,19 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       10,
+    'writeStep':       1000,
     #Threshold
     'zeroThresh':      0.0,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_nf128.ckpt",
     #Device to run on
-    'device':          '/gpu:1',
+    'device':          '/cpu:0',
     #####ISTA PARAMS######
-    'numIterations':   10,
+    'numIterations':   100000,
     'displayPeriod':   1000,
     #Batch size
-    'batchSize':       32,
+    'batchSize':       8,
     #Learning rate for optimizer
     'learningRateA':   1e-2,
     'learningRateW':   1e-4,
@@ -56,12 +56,11 @@ params = {
     #Patch size
     'patchSizeY':      12,
     'patchSizeX':      12,
-
-    'fista': True,
+    'epsilon':         1e-8,
 }
 
 #Allocate tensorflow object
-tfObj = trueISTA(params, trainDataObj)
+tfObj = ISTA(params, trainDataObj)
 print "Done init"
 
 tfObj.runModel()

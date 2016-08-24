@@ -3,34 +3,20 @@ import numpy as np
 import tensorflow as tf
 from plots.plotWeights import make_plot_time
 import os
-import h5py
 from .utils import sparse_weight_variable, weight_variable, node_variable, conv3d, transpose5dData, transpose5dWeight, undoTranspose5dData, convertToSparse5d, save_sparse_csr
 #import matplotlib.pyplot as plt
-from pvtools import writepvpfile
+#from pvtools import writepvpfile
 
 
-class ISTA_Time:
+class AdamTimeSp(base):
     #Global timestep
     timestep = 0
     plotTimestep = 0
 
     #Sets dictionary of params to member variables
     def loadParams(self, params):
+        super(AdamTimeSP, self).loadParams(params)
         #Initialize tf parameters here
-        self.outDir = params['outDir']
-        self.runDir = self.outDir + params['runDir']
-        self.ckptDir = self.runDir + params['ckptDir']
-        self.plotDir = self.runDir + params['plotDir']
-        self.tfDir = self.runDir + params['tfDir']
-        self.saveFile = self.ckptDir + params['saveFile']
-        self.load = params['load']
-        self.loadFile = params['loadFile']
-        self.numIterations= params['numIterations']
-        self.displayPeriod = params['displayPeriod']
-        self.savePeriod = params['savePeriod']
-        self.plotPeriod = params['plotPeriod']
-        self.device = params['device']
-        self.batchSize = params['batchSize']
         self.learningRateA = params['learningRateA']
         self.learningRateW = params['learningRateW']
         self.thresh = params['thresh']
@@ -42,23 +28,9 @@ class ISTA_Time:
         self.patchSizeT = params['patchSizeT']
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
-        self.progress = params['progress']
-        self.writeStep = params['writeStep']
         self.zeroThresh = params['zeroThresh']
 
-    #Make approperiate directories if they don't exist
-    def makeDirs(self):
-        if not os.path.exists(self.runDir):
-           os.makedirs(self.runDir)
-        if not os.path.exists(self.plotDir):
-           os.makedirs(self.plotDir)
-        if not os.path.exists(self.ckptDir):
-           os.makedirs(self.ckptDir)
-
     def runModel(self):
-        #Load summary
-        self.writeSummary()
-
         #Normalize weights to start
         self.normWeights()
 
@@ -74,12 +46,7 @@ class ISTA_Time:
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
-        self.loadParams(params)
-        self.makeDirs()
-        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        self.dataObj = dataObj
-        self.inputShape = self.dataObj.inputShape
-        self.buildModel(self.dataObj.inputShape)
+        super(AdamTimeSP, self).__init__(params, dataObj)
         self.currImg = self.dataObj.getData(self.batchSize, self.nT)
 
     #Builds the model. inMatFilename should be the vgg file
@@ -210,61 +177,10 @@ class ISTA_Time:
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
         #Images
-        self.i_w = tf.image_summary("weights", self.weightImages, max_images=self.numV)
-        self.i_orig = tf.image_summary("orig", self.frameImages, max_images=self.nT)
-        self.i_recon = tf.image_summary("recon", self.frameRecons, max_images=self.nT)
-        self.i_t_recon = tf.image_summary("t_recon", self.t_frameRecons, max_images=self.nT)
-
-        #Define saver
-        self.saver = tf.train.Saver()
-
-        #Initialize
-        #Load checkpoint if flag set
-        if(self.load):
-           self.loadModel()
-           ##We only load weights, so we need to initialize A
-           #un_vars = list(tf.get_variable(name) for name in self.sess.run(tf.report_uninitialized_variables(tf.all_variables())))
-           #tf.initialize_variables(un_vars)
-        else:
-           self.initSess()
-
-    #Initializes session.
-    def initSess(self):
-        self.sess.run(tf.initialize_all_variables())
-
-    #Allocates and specifies the output directory for tensorboard summaries
-    def writeSummary(self):
-        self.mergedSummary = tf.merge_summary([
-            self.s_loss,
-            self.s_recon,
-            self.s_l1,
-            self.s_l1_mean,
-            self.h_input,
-            self.h_recon,
-            self.h_v1_w,
-            self.h_v1_a,
-            self.h_log_v1_a,
-            self.h_normVals,
-            self.s_errorStd,
-            self.s_s_nnz,
-            #Take these out after
-            self.s_t_loss,
-            self.s_t_recon,
-            self.s_t_errorStd,
-            self.s_t_l1,
-            self.s_t_l1_mean
-            ])
-        self.imageSummary = tf.merge_summary([
-            #self.i_w,
-            self.i_orig,
-            self.i_recon,
-            self.i_t_recon
-            ])
-        self.train_writer = tf.train.SummaryWriter(self.tfDir + "/train", self.sess.graph)
-        #self.test_writer = tf.train.SummaryWriter(self.tfDir+ "/test")
-
-    def closeSess(self):
-        self.sess.close()
+        #self.i_w = tf.image_summary("weights", self.weightImages, max_images=self.numV)
+        #self.i_orig = tf.image_summary("orig", self.frameImages, max_images=self.nT)
+        #self.i_recon = tf.image_summary("recon", self.frameRecons, max_images=self.nT)
+        #self.i_t_recon = tf.image_summary("t_recon", self.t_frameRecons, max_images=self.nT)
 
     #Trains model for numSteps
     def trainA(self, save):
@@ -296,8 +212,8 @@ class ISTA_Time:
             np_V1_W = self.sess.run(self.reshape_weight)
             make_plot_time(np_V1_W, self.plotDir+"dict_"+str(self.timestep))
             #Write summary
-            summary = self.sess.run(self.imageSummary, feed_dict=feedDict)
-            self.train_writer.add_summary(summary, self.timestep)
+            #summary = self.sess.run(self.imageSummary, feed_dict=feedDict)
+            #self.train_writer.add_summary(summary, self.timestep)
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
@@ -344,74 +260,19 @@ class ISTA_Time:
             v1Sparse = convertToSparse5d(npV1_A)
             save_sparse_csr(outPrefix+str(it), v1Sparse)
 
-    ##Evaluates inData, but in miniBatchSize batches for memory efficiency
-    ##If an inGt is provided, will calculate summary as test set
-    #def evalModelBatch(self, miniBatchSize, inData, inGt=None):
-    #    (numData, ny, nx, nf) = inData.shape
-    #    if(inGt != None):
-    #        (numGt, drop) = inGt.shape
-    #        assert(numData == numGt)
-
-    #    #Split up numData into miniBatchSize and evaluate est data
-    #    tfInVals = np.zeros((miniBatchSize, ny, nx, nf))
-    #    outData = np.zeros((numData, 1))
-
-    #    #Ceil of numData/batchSize
-    #    numIt = int(numData/miniBatchSize) + 1
-
-    #    #Only write summary on first it
-
-    #    startOffset = 0
-    #    for it in range(numIt):
-    #        print it, " out of ", numIt
-    #        #Calculate indices
-    #        startDataIdx = startOffset
-    #        endDataIdx = startOffset + miniBatchSize
-    #        startTfValIdx = 0
-    #        endTfValIdx = miniBatchSize
-
-    #        #If out of bounds
-    #        if(endDataIdx >= numData):
-    #            #Calculate offset
-    #            offset = endDataIdx - numData
-    #            #Set endDataIdx to max value
-    #            endDataIdx = numData
-    #            #Set endTfValIdx to less than max value
-    #            endTfValIdx -= offset
-
-    #        tfInVals[startTfValIdx:endTfValIdx, :, :, :] = inData[startDataIdx:endDataIdx, :, :, :]
-    #        feedDict = {self.inputImage: tfInVals, self.keep_prob: 1}
-    #        tfOutVals = self.est.eval(feed_dict=feedDict, session=self.sess)
-    #        outData[startDataIdx:endDataIdx, :] = tfOutVals[startTfValIdx:endTfValIdx, :]
-
-    #        if(inGt != None and it == 0):
-    #            tfInGt = inGt[startDataIdx:endDataIdx, :]
-    #            summary = self.sess.run(self.mergedSummary, feed_dict={self.inputImage: tfInVals, self.gt: tfInGt, self.keep_prob: 1})
-    #            self.test_writer.add_summary(summary, self.timestep)
-
-    #        startOffset += miniBatchSize
-
-    #    #Return output data
-    #    return outData
-
-    #Loads a tf checkpoint
-    def loadModel(self):
-        self.saver.restore(self.sess, self.loadFile)
-        print("Model %s loaded" % self.loadFile)
-
-    def writePvpWeights(self, outputPrefix):
-        npw = self.sess.run(self.reshape_weight)
-        [ntp, nyp, nxp, numK, nfp] = npw.shape
-        for itp in range(ntp):
-            filename = outputPrefix + "_t" + str(itp) + ".pvp"
-            #We need to get weights into pvp shape
-            #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-            weightBuf = np.transpose(npw[itp, :, :, :, :], [2, 0, 1, 3])
-            outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
-            pvp = {}
-            pvp['values'] = outWeights
-            pvp['time'] = np.array([0])
-            writepvpfile(filename, pvp)
+    #def writePvpWeights(self, outputPrefix):
+    #    npw = self.sess.run(self.reshape_weight)
+    #    [ntp, nyp, nxp, numK, nfp] = npw.shape
+    #    for itp in range(ntp):
+    #        filename = outputPrefix + "_t" + str(itp) + ".pvp"
+    #        #We need to get weights into pvp shape
+    #        #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
+    #        outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
+    #        weightBuf = np.transpose(npw[itp, :, :, :, :], [2, 0, 1, 3])
+    #        outWeights[0, 0, 0:numK, :, :, :] = weightBuf
+    #        outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
+    #        pvp = {}
+    #        pvp['values'] = outWeights
+    #        pvp['time'] = np.array([0])
+    #        writepvpfile(filename, pvp)
 
