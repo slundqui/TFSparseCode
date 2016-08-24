@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from plots.plotWeights import plot_weights
+from plots.plotRecon import plotRecon
 import os
 import h5py
 from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
@@ -66,7 +67,7 @@ class AdamSP(base):
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
-                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
+                self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals+1e-8))
 
             with tf.name_scope("Encoding"):
                 #Soft threshold
@@ -86,13 +87,14 @@ class AdamSP(base):
                 self.t_error = self.scaled_inputImage - self.t_recon
 
             with tf.name_scope("Loss"):
-                self.reconError = tf.reduce_mean(tf.square(self.error))
-                self.l1Sparsity = tf.reduce_mean(tf.abs(self.V1_A))
+                #Sum across axis except for match
+                self.reconError = tf.reduce_mean(tf.reduce_sum(tf.square(self.error), reduction_indices=[1, 2, 3]))
+                self.l1Sparsity = tf.reduce_mean(tf.reduce_sum(tf.abs(self.V1_A), reduction_indices=[1, 2, 3]))
                 #Define loss
                 self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
-                self.t_reconError = tf.reduce_mean(tf.square(self.t_error))
-                self.t_l1Sparsity = tf.reduce_mean(tf.abs(self.t_V1_A))
+                self.t_reconError = tf.reduce_mean(tf.reduce_sum(tf.square(self.t_error), reduction_indices=[1, 2, 3]))
+                self.t_l1Sparsity = tf.reduce_mean(tf.reduce_sum(tf.abs(self.t_V1_A), reduction_indices=[1, 2, 3]))
                 #Define loss
                 self.t_loss = self.t_reconError/2 + self.thresh * self.t_l1Sparsity
 
@@ -100,14 +102,17 @@ class AdamSP(base):
                 #Define optimizer
                 #self.optimizerA = tf.train.GradientDescentOptimizer(self.learningRateA).minimize(self.loss,
                 self.optimizerA = tf.train.AdamOptimizer(self.learningRateA).minimize(self.loss,
+                #self.optimizerA = tf.train.AdadeltaOptimizer(self.learningRateA).minimize(self.loss,
                         var_list=[
                             self.V1_A
                         ])
                 #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
                 #Minimizing weights with respect to the cutoff weights
                 #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.t_loss,
-                self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
+                #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
                 #self.optimizerW = tf.train.MomentumOptimizer(self.learningRateW, .9).minimize(self.loss,
+                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW).minimize(self.loss,
+                #self.optimizerW = tf.train.AdagradOptimizer(self.learningRateW).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])
@@ -139,7 +144,7 @@ class AdamSP(base):
         self.s_t_l1= tf.scalar_summary('t l1 sparsity', self.t_l1Sparsity, name="t_l1Sparsity")
         self.s_t_l1_mean = tf.scalar_summary('t l1 mean', self.t_l1_mean, name="t_l1Mean")
 
-        self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
+        self.h_input = tf.histogram_summary('input', self.scaled_inputImage, name="input")
         self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
         self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
 
@@ -177,6 +182,11 @@ class AdamSP(base):
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
             plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
+            np_img = self.sess.run(self.scaled_inputImage, feed_dict = feedDict)
+            np_recon = self.sess.run(self.recon, feed_dict=feedDict)
+            np_t_recon = self.sess.run(self.t_recon, feed_dict=feedDict)
+            plotRecon(np_recon, np_img, self.plotDir+"recon_"+str(self.timestep)+".png", r=range(4))
+            plotRecon(np_t_recon, np_img, self.plotDir+"t_recon_"+str(self.timestep)+".png", r=range(4))
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)

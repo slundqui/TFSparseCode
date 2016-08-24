@@ -17,7 +17,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/adam_cifar_nf256/",
+    'runDir':          "/adadelta_cifar_nf256/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -29,24 +29,24 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       400,
+    'writeStep':       200,
     #Threshold
     'zeroThresh':      1e-3,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_nf128.ckpt",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #####ISTA PARAMS######
-    'numIterations':   100000,
-    'displayPeriod':   400,
+    'numIterations':   1000000,
+    'displayPeriod':   200,
     #Batch size
     'batchSize':       32,
     #Learning rate for optimizer
     'learningRateA':   1e-3,
-    'learningRateW':   1e-2,
+    'learningRateW':   1,
     #Lambda in energy function
-    'thresh':          .3,
+    'thresh':          .02,
     #Number of features in V1
     'numV':            256,
     #Stride of V1
