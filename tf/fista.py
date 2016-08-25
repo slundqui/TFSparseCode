@@ -58,7 +58,7 @@ class FISTA(base):
                 self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
 
             with tf.name_scope("Dictionary"):
-                self.V1_W = weight_variable(self.WShape, "V1_W", 1e-3)
+                self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
@@ -92,7 +92,6 @@ class FISTA(base):
             with tf.name_scope("Loss"):
                 self.reconError = tf.reduce_mean(tf.reduce_sum(tf.square(self.error), reduction_indices=[1, 2, 3]))
                 self.l1Sparsity = tf.reduce_mean(tf.reduce_sum(tf.abs(self.V1_A), reduction_indices=[1, 2, 3]))
-
                 #Define loss
                 self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
@@ -123,7 +122,7 @@ class FISTA(base):
                 self.optimizerA3 = self.V1_A.assign(self.newA)
                 self.optimizerA = tf.tuple([self.optimizerA1, self.optimizerA2, self.optimizerA3])
 
-                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW).minimize(self.loss,
+                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW, epsilon=1e-6).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])

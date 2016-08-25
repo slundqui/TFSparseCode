@@ -23,7 +23,6 @@ class AdamSP(base):
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
         self.zeroThresh = params['zeroThresh']
-        #self.epsilon = params['epsilon']
 
     def runModel(self):
         #Normalize weights to start
@@ -63,7 +62,7 @@ class AdamSP(base):
                 self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
 
             with tf.name_scope("Dictionary"):
-                self.V1_W = weight_variable(self.WShape, "V1_W", 1e-3)
+                self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
@@ -109,10 +108,7 @@ class AdamSP(base):
                 #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.loss,
                 #Minimizing weights with respect to the cutoff weights
                 #self.optimizerW = tf.train.AdamOptimizer(self.learningRateW).minimize(self.t_loss,
-                #self.optimizerW = tf.train.GradientDescentOptimizer(self.learningRateW).minimize(self.loss,
-                #self.optimizerW = tf.train.MomentumOptimizer(self.learningRateW, .9).minimize(self.loss,
-                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW).minimize(self.loss,
-                #self.optimizerW = tf.train.AdagradOptimizer(self.learningRateW).minimize(self.loss,
+                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW, epsilon=1e-6).minimize(self.loss,
                         var_list=[
                             self.V1_W
                         ])

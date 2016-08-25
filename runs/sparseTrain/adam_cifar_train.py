@@ -33,7 +33,7 @@ params = {
     #Threshold
     'zeroThresh':      1e-3,
     #Flag for loading weights from checkpoint
-    'load':            False,
+    'load':            True,
     'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/adam_cifar_nf256.ckpt",
     #Device to run on
     'device':          '/gpu:1',
@@ -44,7 +44,7 @@ params = {
     'batchSize':       32,
     #Learning rate for optimizer
     'learningRateA':   1e-3,
-    'learningRateW':   .1,
+    'learningRateW':   1,
     #Lambda in energy function
     'thresh':          .02,
     #Number of features in V1

@@ -61,7 +61,7 @@ class ISTA(base):
                 self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
 
             with tf.name_scope("Dictionary"):
-                self.V1_W = weight_variable(self.WShape, "V1_W", 1e-3)
+                self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))

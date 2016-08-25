@@ -31,7 +31,6 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
 
     subplot_x = int(np.ceil(np.sqrt(num_weights)))
     subplot_y = int(np.ceil(num_weights/float(subplot_x)))
-    weights_list = list()
 
     outWeightMat = np.zeros((patch_y*subplot_y, patch_x*subplot_x, patch_f)).astype(np.float32)
 
@@ -46,19 +45,24 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
         startIdx_y = weight_y*patch_y
         endIdx_y = startIdx_y+patch_y
 
-        weight_patch = permute_weights[weight, :, :, :]
+        weight_patch = permute_weights[weight, :, :, :].astype(np.float32)
 
+        #Set mean to 0
+        weight_patch = weight_patch - np.mean(weight_patch)
         scaleVal = np.max([np.fabs(weight_patch.max()), np.fabs(weight_patch.min())])
+        weight_patch = weight_patch / scaleVal
+        weight_patch = (weight_patch + 1)/2
 
-        scale_factor = 2*scaleVal
-        weight_patch = (weight_patch.astype(np.float32) - scaleVal) / scale_factor
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
+    fig = plt.figure()
     plt.imshow(outWeightMat)
     plt.savefig(outFilename)
+    plt.close(fig)
 
-    plt.figure()
+    fig = plt.figure()
     plt.hist(weights_matrix.flatten(), 50)
     plt.savefig(outFilename + ".hist.png")
+    plt.close(fig)
 
 
