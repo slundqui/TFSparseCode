@@ -30,24 +30,22 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       1000,
-    #Threshold
-    'zeroThresh':      0.0,
+    'writeStep':       10,
     #Flag for loading weights from checkpoint
     'load':            False,
-    'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_nf128.ckpt",
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/ista_cifar_nf256.ckpt",
     #Device to run on
     'device':          '/gpu:0',
     #####ISTA PARAMS######
-    'numIterations':   100000,
+    'numIterations':   10,
     'displayPeriod':   1000,
     #Batch size
     'batchSize':       8,
     #Learning rate for optimizer
-    'learningRateA':   1e-2,
-    'learningRateW':   1e-4,
+    'learningRateA':   .2,
+    'learningRateW':   1,
     #Lambda in energy function
-    'thresh':          .02,
+    'thresh':          .005,
     #Number of features in V1
     'numV':            256,
     #Stride of V1

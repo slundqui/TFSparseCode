@@ -6,10 +6,10 @@ from plots.plotWeights import plot_weights
 from plots.plotRecon import plotRecon
 from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
 
-class ISTA(base):
+class FISTA(base):
     #Sets dictionary of params to member variables
     def loadParams(self, params):
-        super(ISTA, self).loadParams(params)
+        super(FISTA, self).loadParams(params)
         self.learningRateA = params['learningRateA']
         self.learningRateW = params['learningRateW']
         self.thresh = params['thresh']
@@ -18,7 +18,6 @@ class ISTA(base):
         self.VStrideX = params['VStrideX']
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
-        self.epsilon = params['epsilon']
 
     def runModel(self):
         #Normalize weights to start
@@ -34,12 +33,10 @@ class ISTA(base):
            self.trainW()
            self.normWeights()
 
-    #def getLoadVars(self):
-    #    return tf.all_variables()
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
-        super(ISTA, self).__init__(params, dataObj)
+        super(FISTA, self).__init__(params, dataObj)
         self.currImg = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
@@ -65,15 +62,19 @@ class ISTA(base):
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
-                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals + 1e-8)
+                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
 
-            with tf.name_scope("ISTA"):
+            with tf.name_scope("FISTA"):
                 #Soft threshold
                 self.V1_A = weight_variable(self.VShape, "V1_A", 1e-3)
-                #Reinitializer
-                self.randV1 = tf.truncated_normal(self.VShape, mean=0, stddev=1e-3)
-                self.initV1 = self.V1_A.assign(self.randV1)
+                self.V1_Y = weight_variable(self.VShape, "V1_Y", 1e-3)
+                self.T = tf.Variable(1.0, "T")
 
+                self.randV1 = tf.truncated_normal(self.VShape, mean=0, stddev=1e-3)
+                #Reassign nodes
+                self.resetV1 = self.V1_A.assign(self.randV1)
+                self.resetT = self.T.assign(1.0)
+                self.resetY = self.V1_Y.assign(self.V1_A)
 
             with tf.name_scope("Recon"):
                 assert(self.VStrideY >= 1)
@@ -87,6 +88,7 @@ class ISTA(base):
             with tf.name_scope("Loss"):
                 self.reconError = tf.reduce_mean(tf.reduce_sum(tf.square(self.error), reduction_indices=[1, 2, 3]))
                 self.l1Sparsity = tf.reduce_mean(tf.reduce_sum(tf.abs(self.V1_A), reduction_indices=[1, 2, 3]))
+
                 #Define loss
                 self.loss = self.reconError/2 + self.thresh * self.l1Sparsity
 
@@ -98,9 +100,17 @@ class ISTA(base):
                 #            self.V1_A
                 #        ])
                 self.reconGrad = self.learningRateA * tf.gradients(self.reconError, [self.V1_A])[0]
-                #We add epslon to avoid taking sign of 0 if v1_a is 0
-                self.newA = tf.nn.relu(tf.abs(self.V1_A - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
-                self.optimizerA = self.V1_A.assign(self.newA)
+
+                self.newA = tf.nn.relu(tf.abs(self.V1_Y - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
+
+                self.newT = (1+tf.sqrt(4*tf.square(self.T)))/2
+                self.newY = self.newA + ((self.T-1)/self.newT)*(self.newA-self.V1_A)
+
+                #We must do these 3 optimizations in parallel
+                self.optimizerA1 = self.V1_Y.assign(self.newY)
+                self.optimizerA2 = self.T.assign(self.newT)
+                self.optimizerA3 = self.V1_A.assign(self.newA)
+                self.optimizerA = tf.tuple([self.optimizerA1, self.optimizerA2, self.optimizerA3])
 
                 self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW).minimize(self.loss,
                         var_list=[
@@ -137,11 +147,14 @@ class ISTA(base):
 
     #Trains model for numSteps
     def trainA(self, save):
+
         #Define session
         feedDict = {self.inputImage: self.currImg}
 
-        #Reinitialize v1
-        self.sess.run(self.initV1)
+        #Reset all vars
+        self.sess.run(self.resetV1)
+        self.sess.run(self.resetY)
+        self.sess.run(self.resetT)
 
         for i in range(self.displayPeriod):
             #Run optimizer
@@ -201,7 +214,7 @@ class ISTA(base):
             if((i+1)%self.progress == 0):
                 print "Timestep ", str(i) , " out of ", str(self.displayPeriod)
         #Get thresholded v1 as an output
-        outVals = self.V1_A.eval(session=self.sess)
+        outVals = self.t_V1_A.eval(session=self.sess)
         return outVals
 
     def evalSet(self, evalDataObj, outPrefix, displayPeriod=None):
