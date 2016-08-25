@@ -62,13 +62,17 @@ class FISTA(base):
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
-                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals)
+                self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals + 1e-8))
 
             with tf.name_scope("FISTA"):
                 #Soft threshold
                 self.V1_A = weight_variable(self.VShape, "V1_A", 1e-3)
                 self.V1_Y = weight_variable(self.VShape, "V1_Y", 1e-3)
                 self.T = tf.Variable(1.0, "T")
+
+                self.oldA = weight_variable(self.VShape, "oldA", 1e-3)
+                self.oldY = weight_variable(self.VShape, "oldY", 1e-3)
+                self.oldT = tf.Variable(1.0, "oldT")
 
                 self.randV1 = tf.truncated_normal(self.VShape, mean=0, stddev=1e-3)
                 #Reassign nodes
@@ -101,12 +105,19 @@ class FISTA(base):
                 #        ])
                 self.reconGrad = self.learningRateA * tf.gradients(self.reconError, [self.V1_A])[0]
 
-                self.newA = tf.nn.relu(tf.abs(self.V1_Y - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.V1_A)
+                #Store old values in tensors
+                #This is to avoid updating a variable too early to affect new values
+                self.optimizerA0 = tf.tuple([
+                    self.oldA.assign(self.V1_A),
+                    self.oldT.assign(self.T),
+                    self.oldY.assign(self.V1_Y),
+                ])
 
-                self.newT = (1+tf.sqrt(4*tf.square(self.T)))/2
-                self.newY = self.newA + ((self.T-1)/self.newT)*(self.newA-self.V1_A)
+                self.newA = tf.nn.relu(tf.abs(self.oldY - self.reconGrad) - self.thresh*self.learningRateA) * tf.sign(self.oldA)
+                self.newT = (1+tf.sqrt(4*tf.square(self.oldT)))/2
+                self.newY = self.newA + ((self.oldT-1)/(self.newT+1e-8))*(self.newA-self.oldA)
 
-                #We must do these 3 optimizations in parallel
+                #We update actual variables
                 self.optimizerA1 = self.V1_Y.assign(self.newY)
                 self.optimizerA2 = self.T.assign(self.newT)
                 self.optimizerA3 = self.V1_A.assign(self.newA)
@@ -158,6 +169,7 @@ class FISTA(base):
 
         for i in range(self.displayPeriod):
             #Run optimizer
+            self.sess.run(self.optimizerA0, feed_dict=feedDict)
             self.sess.run(self.optimizerA, feed_dict=feedDict)
             self.timestep+=1
             if((i+1)%self.writeStep == 0):

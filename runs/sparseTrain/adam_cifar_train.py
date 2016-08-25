@@ -44,7 +44,7 @@ params = {
     'batchSize':       32,
     #Learning rate for optimizer
     'learningRateA':   1e-3,
-    'learningRateW':   1,
+    'learningRateW':   .1,
     #Lambda in energy function
     'thresh':          .02,
     #Number of features in V1

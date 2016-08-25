@@ -65,7 +65,7 @@ class ISTA(base):
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
-                self.normalize_W = self.V1_W.assign(self.V1_W/self.normVals + 1e-8)
+                self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals + 1e-8))
 
             with tf.name_scope("ISTA"):
                 #Soft threshold
