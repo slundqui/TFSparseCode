@@ -6,12 +6,12 @@ from tf.fista import FISTA
 import numpy as np
 import pdb
 
-trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
-#testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
+#trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
+testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
-trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
-#testDataObj = cifarObj(testImageLists, resizeMethod="pad")
+#trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
+testDataObj = cifarObj(testImageLists, resizeMethod="pad")
 
 #ISTA params
 params = {
@@ -59,11 +59,11 @@ params = {
 }
 
 #Allocate tensorflow object
-tfObj = FISTA(params, trainDataObj)
+tfObj = FISTA(params, testDataObj)
 print "Done init"
-outFilename = params["outDir"] + params["runDir"] + "fista_train_cifar_256_eval.pvp"
+outFilename = params["outDir"] + params["runDir"] + "fista_test_cifar_256_eval.pvp"
 
-tfObj.evalSet(trainDataObj, outFilename)
+tfObj.evalSet(testDataObj, outFilename)
 print "Done run"
 
 tfObj.closeSess()

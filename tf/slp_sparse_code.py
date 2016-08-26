@@ -84,11 +84,13 @@ class SLP:
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
-        if(self.pvpWeightFile):
-            npWeights = load_pvp_weights(self.pvpWeightFile)
-        else:
-            print "Must load from weights"
-            assert(0)
+
+        if(self.verifyTrain or self.verifyTest):
+            if(self.pvpWeightFile):
+                npWeights = load_pvp_weights(self.pvpWeightFile)
+            else:
+                print "Must load from weights"
+                assert(0)
 
         #Running on GPU
         with tf.device(self.device):
@@ -123,8 +125,9 @@ class SLP:
                 self.est = tf.nn.softmax(tf.matmul(self.flat_pooled, self.W_slp) + self.B_slp)
 
             with tf.name_scope("recon"):
-                self.W_dict = weight_variable_fromnp(npWeights, "W_dict")
-                self.recon = conv2d_oneToMany(self.input, self.W_dict, self.imageShape, "recon", self.VStrideY, self.VStrideX)
+                if(self.verifyTrain or self.verifyTest):
+                    self.W_dict = weight_variable_fromnp(npWeights, "W_dict")
+                    self.recon = conv2d_oneToMany(self.input, self.W_dict, self.imageShape, "recon", self.VStrideY, self.VStrideX)
 
             with tf.name_scope("Loss"):
                 #Define loss
