@@ -10,12 +10,12 @@ trainList =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
 testList =  "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 
 #Get object from which tensorflow will pull data from
-trainDataObj = cifarObj(trainList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True, range(128))
+trainDataObj = cifarObj(trainList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True, rangeIdx=range(128))
 testDataObj = cifarObj(testList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True)
 
 params = {
     #Base output directory
-    'outDir':          "/home/slundquist/mountData/tfLCA/",
+    'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
     'runDir':          "/cifar_sup_256_limited/",
     'tfDir':           "/tfout",
@@ -36,8 +36,8 @@ params = {
     #Device to run on
     'device':          '/gpu:0',
     #Num iterations
-    'outerSteps':      500, #1000000,
-    'innerSteps':      100, #300,
+    'numIterations':   500,
+    'displayPeriod':   100,
     #Batch size
     'batchSize':       4,
     #Learning rate for optimizer
@@ -61,7 +61,7 @@ params = {
 
 #Allocate tensorflow object
 #This will build the graph
-tfObj = Supervised(params, trainDataObj.inputShape)
+tfObj = Supervised(params, trainDataObj)
 
 print "Done init"
 tfObj.runModel(trainDataObj, testDataObj = testDataObj)

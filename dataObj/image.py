@@ -41,6 +41,7 @@ class dataObj(object):
             self.shuffleIdx = range(self.numImages)
         else:
             self.shuffleIdx=rangeIdx
+        self.numData = len(self.shuffleIdx)
         self.doShuffle = shuffle
         self.skip = skip
         self.getGT = getGT
@@ -182,7 +183,7 @@ class dataObj(object):
         #Update imgIdx
         self.imgIdx = self.imgIdx + self.skip
 
-        if(self.imgIdx >= self.numImages):
+        if(self.imgIdx >= self.numData):
             print "Rewinding"
             self.imgIdx = 0
             if(self.doShuffle):
@@ -234,8 +235,8 @@ class cifarObj(dataObj):
     inputShape = (32, 32, 3)
     numClasses = 10
 
-    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
-        super(cifarObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False, rangeIdx=None):
+        super(cifarObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT, rangeIdx)
         self.gtIdx = [int(fn.split('/')[-2]) for fn in self.imgFiles]
 
     def calcGT(self, targetIdx):
@@ -246,20 +247,20 @@ class imageNetObj(dataObj):
     #inputShape = (64, 128, 3)
     inputShape = (64, 64, 3)
     numClasses = 1000
-    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False, rangeIdx=None):
         assert(getGT==False)
-        super(imagenetObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
+        super(imagenetObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT, rangeIdx)
 
 
 #TODO this object is specific for cifar right now. Do multiple inheritence for this obj in the future
 class tfObj(dataObj):
     numClasses = 10
-    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True):
+    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True, rangeIdx=None):
         self.inputShape = inputShape
         gtFnList = readList(gtList)
         self.gtIdx = [int(fn.split('/')[-2]) for fn in gtFnList]
         #Call superclass constructor
-        super(tfObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT)
+        super(tfObj, self).__init__(imgList, resizeMethod, shuffle, skip, seed, getGT, rangeIdx)
         assert(len(self.gtIdx) ==  self.numImages)
 
     def load_sparse_csr(self, filename):
