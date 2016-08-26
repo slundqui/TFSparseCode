@@ -28,7 +28,7 @@ params = {
     'plotDir':         "plots/",
     'plotPeriod':      20, #With respect to displayPeriod
     #Progress step
-    'progress':        10,
+    'progress':        200,
     #Controls how often to write out to tensorboard
     'writeStep':       200, #300,
     #Threshold
@@ -61,7 +61,9 @@ params = {
 #Allocate tensorflow object
 tfObj = FISTA(params, trainDataObj)
 print "Done init"
-tfObj.evalSet(trainDataObj, "/home/slundquist/mountData/tfSparseCode/cifar_eval/train_data_sparse/fista_cifar_256.pvp")
+outFilename = params["outDir"] + params["runDir"] + "fista_cifar_256_eval.pvp"
+
+tfObj.evalSet(trainDataObj, outFilename)
 print "Done run"
 
 tfObj.closeSess()

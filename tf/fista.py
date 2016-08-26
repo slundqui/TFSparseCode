@@ -35,7 +35,6 @@ class FISTA(base):
            self.trainW()
            self.normWeights()
 
-
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(FISTA, self).__init__(params, dataObj)
@@ -157,12 +156,7 @@ class FISTA(base):
 
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
-    #Trains model for numSteps
-    def trainA(self, save):
-
-        #Define session
-        feedDict = {self.inputImage: self.currImg}
-
+    def encodeImage(self, feedDict):
         #Reset all vars
         self.sess.run(self.resetV1)
         self.sess.run(self.resetY)
@@ -178,6 +172,12 @@ class FISTA(base):
                 self.train_writer.add_summary(summary, self.timestep)
             if((i+1)%self.progress == 0):
                 print "Timestep ", self.timestep
+
+    #Trains model for numSteps
+    def trainA(self, save):
+        #Define session
+        feedDict = {self.inputImage: self.currImg}
+        self.encodeImage(feedDict)
 
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
@@ -221,11 +221,7 @@ class FISTA(base):
             displayPeriod=self.displayPeriod
 
         feedDict = {self.inputImage: inData}
-        #Optimize V for displayPeriod amount
-        for i in range(self.displayPeriod):
-            self.sess.run(self.optimizerA, feed_dict=feedDict)
-            if((i+1)%self.progress == 0):
-                print "Timestep ", str(i) , " out of ", str(self.displayPeriod)
+        self.encodeImage(feedDict)
         #Get thresholded v1 as an output
         outVals = self.V1_A.eval(session=self.sess)
         return outVals

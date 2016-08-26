@@ -1,14 +1,12 @@
 import pdb
 import numpy as np
 import tensorflow as tf
+from base import base
 from plots.plotWeights import plot_weights
 from plots.plotRecon import plotRecon
-import os
-import h5py
 from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
-#import matplotlib.pyplot as plt
-from pvtools import writepvpfile
-from base import base
+#Using pvp files for saving
+from pvtools import *
 
 class AdamSP(base):
     #Sets dictionary of params to member variables
@@ -149,10 +147,7 @@ class AdamSP(base):
 
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
-    #Trains model for numSteps
-    def trainA(self, save):
-        #Define session
-        feedDict = {self.inputImage: self.currImg}
+    def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
             #Run optimizer
             self.sess.run(self.optimizerA, feed_dict=feedDict)
@@ -162,6 +157,12 @@ class AdamSP(base):
                 self.train_writer.add_summary(summary, self.timestep)
             if((i+1)%self.progress == 0):
                 print "Timestep ", self.timestep
+
+    #Trains model for numSteps
+    def trainA(self, save):
+        #Define session
+        feedDict = {self.inputImage: self.currImg}
+        self.encodeImage(feedDict)
 
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
@@ -178,7 +179,8 @@ class AdamSP(base):
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
             plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
-            np_img = self.sess.run(self.scaled_inputImage, feed_dict = feedDict)
+            #Draw recons
+            np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
             np_t_recon = self.sess.run(self.t_recon, feed_dict=feedDict)
             plotRecon(np_recon, np_img, self.plotDir+"recon_"+str(self.timestep)+".png", r=range(4))
@@ -206,99 +208,44 @@ class AdamSP(base):
             displayPeriod=self.displayPeriod
 
         feedDict = {self.inputImage: inData}
-        #Optimize V for displayPeriod amount
-        for i in range(self.displayPeriod):
-            self.sess.run(self.optimizerA, feed_dict=feedDict)
-            if((i+1)%self.progress == 0):
-                print "Timestep ", str(i) , " out of ", str(self.displayPeriod)
+        self.encodeImage(feedDict)
         #Get thresholded v1 as an output
         outVals = self.t_V1_A.eval(session=self.sess)
         return outVals
 
-    def evalSet(self, evalDataObj, outPrefix, displayPeriod=None):
+    def evalSet(self, evalDataObj, outFilename, displayPeriod=None):
         numImages = evalDataObj.numImages
         #skip must be 1 for now
         assert(evalDataObj.skip == 1)
         numIterations = int(np.ceil(float(numImages)/self.batchSize))
 
-        #Open h5py file
+        pvFile = pvpOpen(outFilename, 'w')
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
             npV1_A = self.evalData(self.currImg, displayPeriod=displayPeriod)
-            for b in range(self.batchSize):
-                frameIdx = it*self.batchSize + b
-                if(frameIdx < numImages):
-                    v1Sparse = convertToSparse4d(np.expand_dims(npV1_A[b, :, :, :], 0))
-                    save_sparse_csr(outPrefix+str(frameIdx), v1Sparse)
+            v1Sparse = convertToSparse4d(npV1_A)
+            time = range(it*self.batchSize, (it+1)*self.batchSize)
+            data = {"values":v1Sparse, "time":time}
+            pvFile.write(data, shape=(self.VShape[1], self.VShape[2], self.VShape[3]))
             self.currImg = self.dataObj.getData(self.batchSize)
 
-    ##Evaluates inData, but in miniBatchSize batches for memory efficiency
-    ##If an inGt is provided, will calculate summary as test set
-    #def evalModelBatch(self, miniBatchSize, inData, inGt=None):
-    #    (numData, ny, nx, nf) = inData.shape
-    #    if(inGt != None):
-    #        (numGt, drop) = inGt.shape
-    #        assert(numData == numGt)
-
-    #    #Split up numData into miniBatchSize and evaluate est data
-    #    tfInVals = np.zeros((miniBatchSize, ny, nx, nf))
-    #    outData = np.zeros((numData, 1))
-
-    #    #Ceil of numData/batchSize
-    #    numIt = int(numData/miniBatchSize) + 1
-
-    #    #Only write summary on first it
-
-    #    startOffset = 0
-    #    for it in range(numIt):
-    #        print it, " out of ", numIt
-    #        #Calculate indices
-    #        startDataIdx = startOffset
-    #        endDataIdx = startOffset + miniBatchSize
-    #        startTfValIdx = 0
-    #        endTfValIdx = miniBatchSize
-
-    #        #If out of bounds
-    #        if(endDataIdx >= numData):
-    #            #Calculate offset
-    #            offset = endDataIdx - numData
-    #            #Set endDataIdx to max value
-    #            endDataIdx = numData
-    #            #Set endTfValIdx to less than max value
-    #            endTfValIdx -= offset
-
-    #        tfInVals[startTfValIdx:endTfValIdx, :, :, :] = inData[startDataIdx:endDataIdx, :, :, :]
-    #        feedDict = {self.inputImage: tfInVals, self.keep_prob: 1}
-    #        tfOutVals = self.est.eval(feed_dict=feedDict, session=self.sess)
-    #        outData[startDataIdx:endDataIdx, :] = tfOutVals[startTfValIdx:endTfValIdx, :]
-
-    #        if(inGt != None and it == 0):
-    #            tfInGt = inGt[startDataIdx:endDataIdx, :]
-    #            summary = self.sess.run(self.mergedSummary, feed_dict={self.inputImage: tfInVals, self.gt: tfInGt, self.keep_prob: 1})
-    #            self.test_writer.add_summary(summary, self.timestep)
-
-    #        startOffset += miniBatchSize
-
-    #    #Return output data
-    #    return outData
-
-    #def writePvpWeights(self, outputPrefix, rect=False):
-    #    npw = self.sess.run(self.V1_W)
-    #    [nyp, nxp, nfp, numK] = npw.shape
-    #    filename = outputPrefix + ".pvp"
-    #    #We need to get weights into pvp shape
-    #    #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-    #    if(rect):
-    #        outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-    #    else:
-    #        outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
-    #    weightBuf = np.transpose(npw, [3, 0, 1, 2])
-    #    outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-    #    if(rect):
-    #        outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
-    #    pvp = {}
-    #    pvp['values'] = outWeights
-    #    pvp['time'] = np.array([0])
-    #    writepvpfile(filename, pvp)
+    def writePvpWeights(self, outputPrefix, rect=False):
+        npw = self.sess.run(self.V1_W)
+        [nyp, nxp, nfp, numK] = npw.shape
+        filename = outputPrefix + ".pvp"
+        #We need to get weights into pvp shape
+        #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
+        if(rect):
+            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
+        else:
+            outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
+        weightBuf = np.transpose(npw, [3, 0, 1, 2])
+        outWeights[0, 0, 0:numK, :, :, :] = weightBuf
+        if(rect):
+            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
+        pvp = {}
+        pvp['values'] = outWeights
+        pvp['time'] = np.array([0])
+        writepvpfile(filename, pvp)
 
