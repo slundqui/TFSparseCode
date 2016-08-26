@@ -33,11 +33,14 @@ class dataObj(object):
     #"max" will find the max dimension of the list of images, and pad the surrounding area
     #Additionally, if inMaxDim is set with resizeMethod of "max", it will explicitly set
     #the max dimension to inMaxDim
-    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False):
+    def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False, rangeIdx=None):
         self.resizeMethod=resizeMethod
         self.imgFiles = readList(imgList)
         self.numImages = len(self.imgFiles)
-        self.shuffleIdx = range(self.numImages)
+        if(rangeIdx == None):
+            self.shuffleIdx = range(self.numImages)
+        else:
+            self.shuffleIdx=rangeIdx
         self.doShuffle = shuffle
         self.skip = skip
         self.getGT = getGT
@@ -285,14 +288,14 @@ class tfObj(dataObj):
 class pvpObj(dataObj):
     numClasses = 10
     #imgList here is the pvp file
-    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True):
+    def __init__(self, imgList, gtList, inputShape, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=True, rangeIdx=None):
         self.inputShape = inputShape
         #Read gt file
         #Read pvp file
         self.inData = readpvpfile(imgList, progressPeriod = 100)["values"]
         [numFrames, numVals] = self.inData.shape
         #Call superclass constructor
-        super(pvpObj, self).__init__(gtList, resizeMethod, shuffle, skip, seed, getGT)
+        super(pvpObj, self).__init__(gtList, resizeMethod, shuffle, skip, seed, getGT, rangeIdx)
         self.gtIdx = [int(fn.split('/')[-2]) for fn in self.imgFiles]
         assert(len(self.gtIdx) ==  numFrames)
 
