@@ -183,8 +183,8 @@ class AdamSP(base):
             np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
             np_t_recon = self.sess.run(self.t_recon, feed_dict=feedDict)
-            plotRecon(np_recon, np_img, self.plotDir+"recon_"+str(self.timestep)+".png", r=range(4))
-            plotRecon(np_t_recon, np_img, self.plotDir+"t_recon_"+str(self.timestep)+".png", r=range(4))
+            plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep)+".png", r=range(4))
+            plotRecon(np_t_recon, np_inputImage, self.plotDir+"t_recon_"+str(self.timestep)+".png", r=range(4))
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
