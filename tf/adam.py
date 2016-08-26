@@ -229,6 +229,7 @@ class AdamSP(base):
             data = {"values":v1Sparse, "time":time}
             pvFile.write(data, shape=(self.VShape[1], self.VShape[2], self.VShape[3]))
             self.currImg = self.dataObj.getData(self.batchSize)
+        pvFile.close()
 
     def writePvpWeights(self, outputPrefix, rect=False):
         npw = self.sess.run(self.V1_W)

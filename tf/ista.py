@@ -183,16 +183,13 @@ class ISTA(base):
     #Finds sparse encoding of inData
     #inData must be in the shape of the image
     #[batch, nY, nX, nF]
-    def evalData(self, inData, displayPeriod=None):
+    def evalData(self, inData):
         (nb, ny, nx, nf) = inData.shape
         #Check size
         assert(nb == self.batchSize)
         assert(ny == self.inputShape[0])
         assert(nx == self.inputShape[1])
         assert(nf == self.inputShape[2])
-
-        if(not displayPeriod):
-            displayPeriod=self.displayPeriod
 
         feedDict = {self.inputImage: inData}
 
@@ -202,7 +199,7 @@ class ISTA(base):
         outVals = self.V1_A.eval(session=self.sess)
         return outVals
 
-    def evalSet(self, evalDataObj, outFilename, displayPeriod=None):
+    def evalSet(self, evalDataObj, outFilename):
         numImages = evalDataObj.numImages
         #skip must be 1 for now
         assert(evalDataObj.skip == 1)
@@ -212,12 +209,13 @@ class ISTA(base):
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
-            npV1_A = self.evalData(self.currImg, displayPeriod=displayPeriod)
+            npV1_A = self.evalData(self.currImg)
             v1Sparse = convertToSparse4d(npV1_A)
             time = range(it*self.batchSize, (it+1)*self.batchSize)
             data = {"values":v1Sparse, "time":time}
             pvFile.write(data, shape=(self.VShape[1], self.VShape[2], self.VShape[3]))
             self.currImg = self.dataObj.getData(self.batchSize)
+        pvFile.close()
 
     def writePvpWeights(self, outputPrefix, rect=False):
         npw = self.sess.run(self.V1_W)
