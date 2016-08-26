@@ -11,7 +11,7 @@ testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
 #trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
-testDataObj = cifarObj(testImageLists, resizeMethod="pad")
+testDataObj = cifarObj(testImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
 
 #ISTA params
 params = {
