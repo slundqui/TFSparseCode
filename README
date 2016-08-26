@@ -1,4 +1,18 @@
-A repository for playing around with sparse coding
+Implementation of sparse coding in TensorFlow
+
+This repository implements the following sparse solvers
+
+ADAM: Kingma, Diederik, and Jimmy Ba. "Adam: A method for stochastic optimization." arXiv preprint arXiv:1412.6980 (2014).
+Minimizes squared loss with sparse regularizer
+
+ISTA: Chambolle, Antonin, et al. "Nonlinear wavelet image processing: variational problems, compression, and noise removal through wavelet shrinkage." IEEE Transactions on Image Processing 7.3 (1998): 319-335.
+
+FISTA: Beck, Amir, and Marc Teboulle. "A fast iterative shrinkage-thresholding algorithm for linear inverse problems." SIAM journal on imaging sciences 2.1 (2009): 183-202.
+
+Prerequisites:
+TensorFlow
+Python 2.7
+OpenPV (using pvp files for file storage, be sure to add </path/to/OpenPV/python> to your python path)
 
 Directories:
 dataObj: Directory containing objects for reading data

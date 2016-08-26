@@ -13,8 +13,8 @@ testFileList = "/home/slundquist/mountData/tfLCA/cifar_eval/test.txt"
 testGtList =  "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 
 #Get object from which tensorflow will pull data from
-trainDataObj = tfObj(trainFileList, trainGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
-testDataObj = tfObj(testFileList, testGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
+trainDataObj = pvpObj(trainFileList, trainGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
+testDataObj = pvpObj(testFileList, testGtList, (16, 16, 128), resizeMethod="crop", shuffle=True, skip=1, seed=None)
 
 params = {
     #Base output directory
