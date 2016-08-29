@@ -147,6 +147,14 @@ class AdamSP(base):
 
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
+    #We only load weights, not v1
+    def getLoadVars(self):
+        v = tf.all_variables()
+        out = [var for var in v if ("V1_A" not in var.name)]
+        n = [var.name for var in out]
+        return out
+        #return tf.all_variables()
+
     def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
             #Run optimizer

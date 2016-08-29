@@ -86,7 +86,7 @@ class base(object):
 
     #Loads a tf checkpoint
     def loadModel(self):
-        self.saver.restore(self.sess, self.loadFile)
+        self.loader.restore(self.sess, self.loadFile)
         print("Model %s loaded" % self.loadFile)
 
 

@@ -11,14 +11,13 @@ trainImageLists =  "/home/slundquist/mountData/datasets/cifar/images/train.txt"
 randImageSeed = None
 #Get object from which tensorflow will pull data from
 trainDataObj = cifarObj(trainImageLists, resizeMethod="pad", shuffle=False, seed=randImageSeed)
-#testDataObj = cifarObj(testImageLists, resizeMethod="pad")
 
 #ISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/adam_cifar_eval/",
+    'runDir':          "/adam_cifar_nf256_eval/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -35,7 +34,7 @@ params = {
     'zeroThresh':      1e-3,
     #Flag for loading weights from checkpoint
     'load':            True,
-    'loadFile':        "/home/slundquist/mountData/tfLCA/saved/cifar_batch16_stride2.ckpt",
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/adam_cifar_nf256.ckpt",
     #Device to run on
     'device':          '/gpu:1',
     #####ISTA PARAMS######
@@ -45,9 +44,9 @@ params = {
     'batchSize':       8,
     #Learning rate for optimizer
     'learningRateA':   1e-3,
-    'learningRateW':   1e-4,
+    'learningRateW':   1,
     #Lambda in energy function
-    'thresh':          .015,
+    'thresh':          .02,
     #Number of features in V1
     'numV':            256,
     #Stride of V1
@@ -61,7 +60,7 @@ params = {
 #Allocate tensorflow object
 tfObj = AdamSP(params, trainDataObj)
 print "Done init"
-outFilename = params["outDir"] + params["runDir"] + "adam_cifar_256_eval.pvp"
+outFilename = params["outDir"] + params["runDir"] + "train_adam_cifar_256_eval.pvp"
 tfObj.evalSet(trainDataObj, outFilename)
 print "Done run"
 
