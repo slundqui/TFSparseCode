@@ -34,7 +34,7 @@ params = {
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/DeepGAP/saved/cifar.ckpt",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #Num iterations
     'numIterations':   500,
     'displayPeriod':   100,
@@ -57,6 +57,8 @@ params = {
     'numV':            256,
     #####New encode parapms#####
     'maxPool':         True, #Controls max or avg pool
+
+    'preTrain': False,
 }
 
 #Allocate tensorflow object
@@ -64,7 +66,7 @@ params = {
 tfObj = Supervised(params, trainDataObj)
 
 print "Done init"
-tfObj.runModel(trainDataObj, testDataObj = testDataObj)
+tfObj.runModel(trainDataObj, testDataObj = testDataObj, numTest=256)
 print "Done run"
 
 tfObj.closeSess()

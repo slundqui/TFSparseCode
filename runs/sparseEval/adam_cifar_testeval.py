@@ -62,7 +62,7 @@ params = {
 tfObj = AdamSP(params, testDataObj)
 print "Done init"
 outFilename = params["outDir"] + params["runDir"] + "test_adam_cifar_256_eval.pvp"
-tfObj.evalSet(trainDataObj, outFilename)
+tfObj.evalSet(testDataObj, outFilename)
 print "Done run"
 
 tfObj.closeSess()

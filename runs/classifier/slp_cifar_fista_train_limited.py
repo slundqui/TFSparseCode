@@ -39,7 +39,7 @@ params = {
     #Input vgg file for preloaded weights
     'pvpWeightFile':   "/home/slundquist/mountData/tfLCA/cifar_train/pvp/ista.pvp",
     #Device to run on
-    'device':          '/gpu:1',
+    'device':          '/gpu:0',
     #Num iterations
     'outerSteps':      10000000, #1000000,
     'innerSteps':      50, #300,
@@ -55,6 +55,7 @@ params = {
     'VStrideY':        2,
     'VStrideX':        2,
     'rectify': False,
+
 }
 
 #Allocate tensorflow object
@@ -62,7 +63,7 @@ params = {
 tfObj = SLP(params, trainDataObj.inputShape)
 
 print "Done init"
-tfObj.runModel(trainDataObj, testDataObj = testDataObj)
+tfObj.runModel(trainDataObj, testDataObj = testDataObj, numTest=256)
 print "Done run"
 
 tfObj.closeSess()

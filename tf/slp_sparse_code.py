@@ -61,7 +61,7 @@ class SLP:
         if not os.path.exists(self.ckptDir):
            os.makedirs(self.ckptDir)
 
-    def runModel(self, trainDataObj, testDataObj=None):
+    def runModel(self, trainDataObj, testDataObj=None, numTest=None):
         #Load summary
         self.writeSummary()
         for i in range(self.outerSteps):
@@ -71,8 +71,10 @@ class SLP:
            else:
                plot=False
            if(testDataObj):
-               #Evaluate test frame, providing gt so that it writes to summary
-               (evalData, gtData) = testDataObj.getData(self.batchSize)
+               if(numTest is None):
+                   numTest = self.batchSize
+
+               (evalData, gtData) = testDataObj.getData(numTest)
                self.evalModel(evalData, gtData, plot=plot)
                print "Done test eval"
            #Train
@@ -101,7 +103,7 @@ class SLP:
                 self.weightShape = (inputShape[2]*4, self.numClasses) #4 for pooling output
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
-                self.input = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
+                self.input = node_variable([None, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
                 if(self.rectify):
                     #Negate, concat, and rectify
                     self.neg_input = self.input * -1
@@ -109,7 +111,7 @@ class SLP:
                     poolInput = self.relu_input
                 else:
                     poolInput = self.input
-                self.gt = node_variable([self.batchSize, self.numClasses], "gt")
+                self.gt = node_variable([None, self.numClasses], "gt")
                 #Model variables for convolutions
 
             with tf.name_scope("SLP"):
@@ -222,7 +224,7 @@ class SLP:
     #If an inGt is provided, will calculate summary as test set
     def evalModel(self, inData, inGt = None, plot=True):
         (numData, ny, nx, nf) = inData.shape
-        if(inGt != None):
+        if(inGt is not None):
             (numGt, drop) = inGt.shape
             assert(numData == numGt)
             feedDict = {self.input: inData, self.gt: inGt}
@@ -230,7 +232,7 @@ class SLP:
             feedDict = {self.input: inData}
 
         outVals = self.est.eval(feed_dict=feedDict, session=self.sess)
-        if(inGt != None):
+        if(inGt is not None):
             summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
             self.test_writer.add_summary(summary, self.timestep)
 

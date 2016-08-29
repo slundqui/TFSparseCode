@@ -22,9 +22,10 @@ class Supervised(base):
         self.epsilon = params['epsilon']
         self.regularizer = params['regularizer']
         self.regWeight = params['regWeight']
+        self.preTrain = params['preTrain']
 
 
-    def runModel(self, trainDataObj, testDataObj=None):
+    def runModel(self, trainDataObj, testDataObj=None, numTest = None):
         #Load summary
         self.writeSummary()
         for i in range(self.numIterations):
@@ -34,8 +35,10 @@ class Supervised(base):
            else:
                plot=False
            if(testDataObj):
+               if(numTest is None):
+                   numTest = self.batchSize
                #Evaluate test frame, providing gt so that it writes to summary
-               (evalData, gtData) = testDataObj.getData(self.batchSize)
+               (evalData, gtData) = testDataObj.getData(numTest)
                self.evalModel(evalData, gtData, plot=plot)
                print "Done test eval"
            #Train
@@ -53,8 +56,8 @@ class Supervised(base):
             self.weightShape = (4*self.numV, self.numClasses)
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
-                self.input = node_variable([self.batchSize, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
-                self.gt = node_variable([self.batchSize, self.numClasses], "gt")
+                self.input = node_variable([None, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
+                self.gt = node_variable([None, self.numClasses], "gt")
                 #Model variables for convolutions
 
             with tf.name_scope("Encode"):
@@ -77,6 +80,7 @@ class Supervised(base):
             with tf.name_scope("Loss"):
                 #Define loss
                 self.loss = tf.reduce_mean(-tf.reduce_sum(self.gt * tf.log(self.est+self.epsilon), reduction_indices=[1]))
+
                 if(self.regularizer == "none"):
                     self.reg_loss = self.loss
                 elif(self.regularizer == "weightsl1"):
@@ -93,6 +97,12 @@ class Supervised(base):
             with tf.name_scope("Opt"):
                 #Define optimizer
                 self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.reg_loss)
+                self.optimizerPre = tf.train.AdamOptimizer(self.learningRate).minimize(self.reg_loss,
+                        var_list=[
+                            self.W_slp,
+                            self.B_slp
+                        ]
+                        )
 
             with tf.name_scope("Metric"):
                 self.correct = tf.equal(tf.argmax(self.gt, 1), tf.argmax(self.est, 1))
@@ -125,7 +135,10 @@ class Supervised(base):
             data = dataObj.getData(self.batchSize)
             feedDict = {self.input: data[0], self.gt: data[1]}
             #Run optimizer
-            self.sess.run(self.optimizer, feed_dict=feedDict)
+            if(self.preTrain):
+                self.sess.run(self.optimizerPre, feed_dict=feedDict)
+            else:
+                self.sess.run(self.optimizer, feed_dict=feedDict)
             if(i%self.writeStep == 0):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
@@ -144,7 +157,7 @@ class Supervised(base):
     #If an inGt is provided, will calculate summary as test set
     def evalModel(self, inData, inGt = None, plot=True):
         (numData, ny, nx, nf) = inData.shape
-        if(inGt != None):
+        if(inGt is not None):
             (numGt, drop) = inGt.shape
             assert(numData == numGt)
             feedDict = {self.input: inData, self.gt: inGt}
@@ -152,7 +165,7 @@ class Supervised(base):
             feedDict = {self.input: inData}
 
         outVals = self.est.eval(feed_dict=feedDict, session=self.sess)
-        if(inGt != None):
+        if(inGt is not None):
             summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
             self.test_writer.add_summary(summary, self.timestep)
         #if(plot and inGt != None):
