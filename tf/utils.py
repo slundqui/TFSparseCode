@@ -67,8 +67,8 @@ def conv2d(x, W, inName, stride = None):
     else:
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME', name=inName)
 
-def conv2d_oneToMany(x, W, outShape, inName, yStride, xStride):
-    return tf.nn.conv2d_transpose(x, W, outShape, [1, yStride, xStride, 1], padding='SAME', name=inName)
+def conv2d_oneToMany(x, W, outShape, inName, yStride, xStride, padding='SAME'):
+    return tf.nn.conv2d_transpose(x, W, outShape, [1, yStride, xStride, 1], padding=padding, name=inName)
 
 def maxpool_2x2(x, inName):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
