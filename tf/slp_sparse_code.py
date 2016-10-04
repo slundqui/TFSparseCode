@@ -52,6 +52,9 @@ class SLP:
         self.verifyTrain = params['verifyTrain']
         self.verifyTest = params['verifyTest']
 
+        self.pooledY = params['pooledY']
+        self.pooledX = params['pooledX']
+
     #Make approperiate directories if they don't exist
     def makeDirs(self):
         if not os.path.exists(self.runDir):
@@ -98,9 +101,9 @@ class SLP:
         with tf.device(self.device):
             self.imageShape = (self.batchSize, inputShape[0]*self.VStrideY, inputShape[1]*self.VStrideX, 3)
             if(self.rectify):
-                self.weightShape = (inputShape[2]*8, self.numClasses) #4 for pooling output, 2 for rectification
+                self.weightShape = (inputShape[2]*2*self.pooledY*self.pooledX, self.numClasses) #4 for pooling output, 2 for rectification
             else:
-                self.weightShape = (inputShape[2]*4, self.numClasses) #4 for pooling output
+                self.weightShape = (inputShape[2]*self.pooledY*self.pooledX, self.numClasses) #4 for pooling output
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.input = node_variable([None, inputShape[0], inputShape[1], inputShape[2]], "inputImage")
@@ -118,11 +121,17 @@ class SLP:
                 #Max pooled values
                 self.W_slp = weight_variable_xavier(self.weightShape, "slp_w", False)
                 self.B_slp = bias_variable([self.numClasses], "slp_b")
-                self.pooled = tf.nn.max_pool(poolInput, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME', name="pooled")
+                assert(inputShape[0] % self.pooledY == 0)
+                assert(inputShape[1] % self.pooledX == 0)
+
+                poolY = inputShape[0]/self.pooledY
+                poolX = inputShape[1]/self.pooledX
+
+                self.pooled = tf.nn.max_pool(poolInput, ksize=[1, poolY, poolX, 1], strides=[1, poolY, poolX, 1], padding='SAME', name="pooled")
                 if(self.rectify):
-                    self.flat_pooled = tf.reshape(self.pooled, [-1, 8*inputShape[2]])
+                    self.flat_pooled = tf.reshape(self.pooled, [-1, 2*self.pooledY*self.pooledX*inputShape[2]])
                 else:
-                    self.flat_pooled = tf.reshape(self.pooled, [-1, 4*inputShape[2]])
+                    self.flat_pooled = tf.reshape(self.pooled, [-1, self.pooledY*self.pooledX*inputShape[2]])
                 #self.pooled = tf.reduce_max(self.relu_input, reduction_indices=[1, 2])
                 self.est = tf.nn.softmax(tf.matmul(self.flat_pooled, self.W_slp) + self.B_slp)
 
