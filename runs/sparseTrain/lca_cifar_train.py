@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from dataObj.image import cifarObj
-from tf.fistaTopDown import FISTATopDown
+from tf.lca import LCA
 #from plot.roc import makeRocCurve
 import numpy as np
 import pdb
@@ -18,8 +18,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    #'runDir':          "/fista_cifar_topdown_4layer/",
-    'runDir':          "/fista_cifar_topdown/",
+    'runDir':          "/lca_cifar_nf256/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -31,43 +30,34 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       500,
+    'writeStep':       50,
     #Flag for loading weights from checkpoint
-    'load':            True,
-    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/fista_cifar_topdown.ckpt",
+    'load':            False,
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/fista_cifar_nf256.ckpt",
     #Device to run on
     'device':          '/gpu:0',
     #####FISTA PARAMS######
-    'numIterations':   1000000,
-    'displayPeriod':   500,
+    'numIterations':   100000,
+    'displayPeriod':   5000,
     #Batch size
-    'batchSize':       4,
-    #Heirarchy params
-    #'numLayers':       4,
-    'numLayers':       3,
+    'batchSize':       8,
     #Learning rate for optimizer
-    'learningRateA':   [.001, .002, .003],
-    'learningRateW':   [.01, .1, 1],
+    'learningRateA':   .01,
+    'learningRateW':   1,
     #Lambda in energy function
-    #'thresh':          [.2, .005, .001, .0001],
-    'thresh':          [.2, .005, .001],
+    'thresh':          .2,
     #Number of features in V1
-    #'numV':            [64, 256, 1024, 256],
-    'numV':            [64, 256, 1024],
+    'numV':            256,
     #Stride of V1
-    #'VStrideY':        [2, 2, 2, 4],
-    #'VStrideX':        [2, 2, 2, 4],
-    'VStrideY':        [2, 2, 2],
-    'VStrideX':        [2, 2, 2],
+    'VStrideY':        2,
+    'VStrideX':        2,
     #Patch size
-    #'patchSizeY':      [8, 4, 4, 4],
-    #'patchSizeX':      [8, 4, 4, 4],
-    'patchSizeY':      [8, 4, 4],
-    'patchSizeX':      [8, 4, 4],
+    'patchSizeY':      12,
+    'patchSizeX':      12,
 }
 
 #Allocate tensorflow object
-tfObj = FISTATopDown(params, trainDataObj)
+tfObj = LCA(params, trainDataObj)
 print "Done init"
 
 tfObj.runModel()

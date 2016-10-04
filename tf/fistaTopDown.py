@@ -190,7 +190,7 @@ class FISTATopDown(base):
 
                 newT = (1+tf.sqrt(4*tf.square(self.oldT)))/2
                 for l in range(self.numLayers):
-                    newA = tf.nn.relu(tf.abs(self.oldY[l] - self.learningRateA * self.reconGrads[l]) - self.thresh[l]*self.learningRateA) * tf.sign(self.oldA[l])
+                    newA = tf.nn.relu(tf.abs(self.oldY[l] - self.learningRateA[l] * self.reconGrads[l]) - self.thresh[l]*self.learningRateA[l]) * tf.sign(self.oldA[l])
                     newY = newA + ((self.oldT-1)/(newT+1e-8))*(newA-self.oldA[l])
                     #We update actual variables
                     optimizerList.append(self.V1_Y[l].assign(newY))
@@ -199,10 +199,15 @@ class FISTATopDown(base):
 
                 self.optimizerA = tf.tuple(optimizerList)
 
-                self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW, epsilon=1e-6).minimize(self.loss,
-                        var_list=
-                            self.V1_W
-                        )
+                optWList = []
+                for l in range(self.numLayers):
+                    optWList.append(tf.train.AdadeltaOptimizer(self.learningRateW[l], epsilon=1e-6).minimize(self.loss,
+                            var_list=
+                                [self.V1_W[l]]
+                            ))
+
+                self.optimizerW = tf.group(*optWList)
+
 
         with tf.name_scope("ReconVis"):
             self.visRecon = []

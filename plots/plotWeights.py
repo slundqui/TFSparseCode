@@ -2,17 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 
-def plot_weights_time(weights_matrix, outPrefix):
+#Order defines the order in weights_matrix for num_weights, t, y, x, f
+def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4]):
     assert(weights_matrix.ndim == 5)
-    num_weights = weights_matrix.shape[3]
-    patch_t = weights_matrix.shape[0]
-    patch_y = weights_matrix.shape[1]
-    patch_x = weights_matrix.shape[2]
-    patch_f = weights_matrix.shape[4]
+    num_weights = weights_matrix.shape[order[0]]
+    patch_t = weights_matrix.shape[order[1]]
+    patch_y = weights_matrix.shape[order[2]]
+    patch_x = weights_matrix.shape[order[3]]
+    patch_f = weights_matrix.shape[order[4]]
+
+    if(order == [0, 1, 2, 3, 4]):
+        permute_weights = weights_matrix
+    else:
+        permute_weights = weights_matrix.copy()
+        permute_weights = np.transpose(weights_matrix, order)
 
     for t in range(patch_t):
         outFilename = outPrefix + "_frame" + str(t) + ".png"
-        plot_weights(weights_matrix[t, :, :, :, :], outFilename, order=[2, 0, 1, 3])
+        plot_weights(permute_weights[:, t, :, :, :], outFilename)
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
 def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):

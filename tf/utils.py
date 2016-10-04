@@ -43,6 +43,10 @@ def weight_variable(shape, inName, inStd):
     initial = tf.truncated_normal_initializer(stddev=inStd)
     return tf.get_variable(inName, shape, initializer=initial)
 
+def uniform_weight_variable(shape, inName, minVal=0, maxVal=None):
+    initial = tf.random_uniform_initializer(minVal, maxVal)
+    return tf.get_variable(inName, shape, initializer=initial)
+
 
 def bias_variable(shape, inName, biasInitConst=.01):
    initial = tf.constant(biasInitConst, shape=shape, name=inName)
