@@ -8,10 +8,10 @@ from .utils import *
 #Using pvp files for saving
 from pvtools import *
 
-class LCA(base):
+class LCA_ADAM(base):
     #Sets dictionary of params to member variables
     def loadParams(self, params):
-        super(LCA, self).loadParams(params)
+        super(LCA_ADAM, self).loadParams(params)
         self.learningRateA = params['learningRateA']
         self.learningRateW = params['learningRateW']
         self.thresh = params['thresh']
@@ -37,7 +37,7 @@ class LCA(base):
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
-        super(LCA, self).__init__(params, dataObj)
+        super(LCA_ADAM, self).__init__(params, dataObj)
         self.currImg = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
@@ -65,7 +65,7 @@ class LCA(base):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
                 self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals + 1e-8))
 
-            with tf.name_scope("LCA"):
+            with tf.name_scope("LCA_ADAM"):
                 self.V1_U = uniform_weight_variable(self.VShape, "V1_U", 0.0, 1.25*self.thresh)
                 self.V1_A = weight_variable(self.VShape, "V1_A", 1e-3)
 
@@ -90,11 +90,14 @@ class LCA(base):
                 #Calculate A from U
                 self.optimizerA0 = self.V1_A.assign(tf.nn.relu(self.V1_U - self.thresh))
 
+                self.optimizerA1 = tf.train.AdamOptimizer(self.learningRateA)
+
                 #Find gradient wrt A
-                self.lossGrad = tf.gradients(self.reconError, [self.V1_A])[0]
-                self.dU = self.learningRateA * (-self.lossGrad + self.V1_A - self.V1_U);
+                self.lossGrad = self.optimizerA1.compute_gradients(self.reconError, [self.V1_A])
+                self.dU = [(self.lossGrad[0][0] - self.V1_A + self.V1_U, self.V1_U)];
+
                 #TODO add momentum or ADAM here
-                self.optimizerA = self.V1_U.assign(self.V1_U + self.dU)
+                self.optimizerA = self.optimizerA1.apply_gradients(self.dU)
 
                 self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW, epsilon=1e-6).minimize(self.loss,
                         var_list=[

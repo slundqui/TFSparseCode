@@ -8,7 +8,7 @@ from .utils import sparse_weight_variable, weight_variable, node_variable, conv2
 
 class base(object):
     #Global timestep
-    timestep = 0
+    timestep = np.int64(0)
     plotTimestep = 0
 
     #Sets dictionary of params to member variables

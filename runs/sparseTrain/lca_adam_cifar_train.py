@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 from dataObj.image import cifarObj
-from tf.lca import LCA
+from tf.lca_adam import LCA_ADAM
 #from plot.roc import makeRocCurve
 import numpy as np
 import pdb
@@ -18,7 +18,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_cifar_nf256/",
+    'runDir':          "/lca_adam_cifar_nf256/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -30,7 +30,7 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       400,
+    'writeStep':       200,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/fista_cifar_nf256.ckpt",
@@ -38,11 +38,11 @@ params = {
     'device':          '/gpu:0',
     #####FISTA PARAMS######
     'numIterations':   100000,
-    'displayPeriod':   400,
+    'displayPeriod':   200,
     #Batch size
     'batchSize':       8,
     #Learning rate for optimizer
-    'learningRateA':   .1,
+    'learningRateA':   5e-3,
     'learningRateW':   1,
     #Lambda in energy function
     'thresh':          .01,
@@ -57,7 +57,7 @@ params = {
 }
 
 #Allocate tensorflow object
-tfObj = LCA(params, trainDataObj)
+tfObj = LCA_ADAM(params, trainDataObj)
 print "Done init"
 
 tfObj.runModel()
