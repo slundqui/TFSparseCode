@@ -58,7 +58,10 @@ class LCA_ADAM_time(base):
 
         self.imageShape = (self.batchSize, inputShape[0]/2, inputShape[1], inputShape[2], inputShape[3]*2)
         self.WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, 6, self.numV)
-        self.VShape = (self.batchSize, V_T, V_Y, V_X, self.numV)
+        if(inputShape[0]/2 == 1):
+            self.VShape = (self.batchSize, 1, V_Y, V_X, self.numV)
+        else:
+            self.VShape = (self.batchSize, 2, V_Y, V_X, self.numV)
 
         #Running on GPU
         with tf.device(self.device):
@@ -71,8 +74,9 @@ class LCA_ADAM_time(base):
                 self.permuteImage = tf.transpose(self.reshapeImage, [0, 1, 3, 4, 5, 2])
                 self.stereoImage = tf.reshape(self.permuteImage,
                         [self.batchSize, inputShape[0]/2, inputShape[1], inputShape[2], inputShape[3]*2])
+                self.padInput = tf.pad(self.stereoImage, [[0, 0], [0, 0], [7, 7], [15, 15], [0, 0]])
                 #Scale inputImage
-                self.scaled_inputImage = self.stereoImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
+                self.scaled_inputImage = self.padInput/np.sqrt(self.patchSizeX*self.patchSizeY*6)
 
             with tf.name_scope("Dictionary"):
                 self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
@@ -88,8 +92,9 @@ class LCA_ADAM_time(base):
             with tf.name_scope("Recon"):
                 assert(self.VStrideY >= 1)
                 assert(self.VStrideX >= 1)
+                outputShape = [self.imageShape[0], self.imageShape[1], self.imageShape[2]+14, self.imageShape[3]+30, self.imageShape[4]]
                 #We build index tensor in numpy to gather
-                self.recon = tf.nn.conv3d_transpose(self.V1_A, self.V1_W, self.imageShape, [1, self.VStrideT, self.VStrideY, self.VStrideX, 1], 'SAME', 'recon')
+                self.recon = tf.nn.conv3d_transpose(self.V1_A, self.V1_W, outputShape, [1, self.VStrideT, self.VStrideY, self.VStrideX, 1], 'VALID', 'recon')
 
             with tf.name_scope("Error"):
                 self.error = self.scaled_inputImage - self.recon
@@ -126,7 +131,7 @@ class LCA_ADAM_time(base):
                 self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))*np.sqrt(self.WShape[0]*self.WShape[1]*self.WShape[2]*self.WShape[3])
                 self.l1_mean = tf.reduce_mean(tf.abs(self.V1_A))
 
-                #self.weightImages = tf.transpose(self.V1_W, [3, 0, 1, 2])
+                self.weightImages = tf.transpose(self.V1_W, [4, 0, 1, 2, 3])
 
                 #For log of activities
                 self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-15)
@@ -152,7 +157,7 @@ class LCA_ADAM_time(base):
     def evalAndPlotWeights(self, feedDict, prefix):
         np_weights = self.sess.run(self.V1_W, feed_dict=feedDict)
         (ntime, ny, nx, nfns, nf) = np_weights.shape
-        np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, 3, 2, nf))
+        np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, nfns/2, 2, nf))
         for s in range(2):
             filename = prefix
             if(s == 0):
@@ -197,12 +202,19 @@ class LCA_ADAM_time(base):
 
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
-            np_V1_W = self.sess.run(self.weightImages)
-            plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
+            #np_V1_W = self.sess.run(self.weightImages)
+            #pdb.set_trace()
+            #(numV, time, ny, nx, nf) = V1_W.shape
+            #assert(nf == 6)
+            #np_reshape = np.reshape(V1_W, [numV, time, ny, nx, 3, 2])
+
+            #plot_weights_time(np_V1_W[:, :, :, :, :, 0], self.plotDir+"leftDict_"+str(self.timestep)+".png")
+            #plot_weights_time(np_V1_W[:, :, :, :, :, 1], self.plotDir+"rightDict_"+str(self.timestep)+".png")
             #Draw recons
             #np_inputImage = self.currImg
             #np_recon = self.sess.run(self.recon, feed_dict=feedDict)
             #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            filename = self.plotDir + "train_" + str(self.timestep)
             self.evalAndPlotWeights(feedDict, filename)
 
         #Update weights
