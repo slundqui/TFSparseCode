@@ -25,6 +25,7 @@ class LCA_ADAM_time(base):
         self.patchSizeT = params['patchSizeT']
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
+        self.stereo = params['stereo']
 
     def runModel(self):
         #Normalize weights to start
@@ -56,9 +57,17 @@ class LCA_ADAM_time(base):
         V_Y = int(inputShape[1]/self.VStrideY)
         V_X = int(inputShape[2]/self.VStrideX)
 
-        self.imageShape = (self.batchSize, inputShape[0]/2, inputShape[1], inputShape[2], inputShape[3]*2)
-        self.WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, 6, self.numV)
-        if(inputShape[0]/2 == 1):
+        if(stereo):
+            numTime = inputShape[0]/2
+            numFeatures = inputShape[3]*2
+        else:
+            numTime = inputShape[0]
+            numFeatures = inputShape[3]
+
+        self.imageShape = (self.batchSize, numTime, inputShape[1], inputShape[2], numFeatures)
+        self.WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, numFeatures, self.numV)
+
+        if(numTime == 1):
             self.VShape = (self.batchSize, 1, V_Y, V_X, self.numV)
         else:
             self.VShape = (self.batchSize, 2, V_Y, V_X, self.numV)
@@ -68,15 +77,19 @@ class LCA_ADAM_time(base):
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.inputImage = node_variable((self.batchSize,) + inputShape, "inputImage")
-                #We split the time dimension to stereo and concatenate with feature dim
-                self.reshapeImage = tf.reshape(self.inputImage,
-                        [self.batchSize, inputShape[0]/2, 2, inputShape[1], inputShape[2], inputShape[3]])
-                self.permuteImage = tf.transpose(self.reshapeImage, [0, 1, 3, 4, 5, 2])
-                self.stereoImage = tf.reshape(self.permuteImage,
-                        [self.batchSize, inputShape[0]/2, inputShape[1], inputShape[2], inputShape[3]*2])
-                self.padInput = tf.pad(self.stereoImage, [[0, 0], [0, 0], [7, 7], [15, 15], [0, 0]])
+                if(stereo):
+                    #We split the time dimension to stereo and concatenate with feature dim
+                    self.reshapeImage = tf.reshape(self.inputImage,
+                            [self.batchSize, inputShape[0]/2, 2, inputShape[1], inputShape[2], inputShape[3]])
+                    self.permuteImage = tf.transpose(self.reshapeImage, [0, 1, 3, 4, 5, 2])
+                    self.outImage = tf.reshape(self.permuteImage,
+                            [self.batchSize, inputShape[0]/2, inputShape[1], inputShape[2], inputShape[3]*2])
+                else:
+                    self.outImage = self.inputImage
+
+                self.padInput = tf.pad(self.outImage, [[0, 0], [0, 0], [7, 7], [15, 15], [0, 0]])
                 #Scale inputImage
-                self.scaled_inputImage = self.padInput/np.sqrt(self.patchSizeX*self.patchSizeY*6)
+                self.scaled_inputImage = self.padInput/np.sqrt(self.patchSizeX*self.patchSizeY*numFeatures)
 
             with tf.name_scope("Dictionary"):
                 self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
@@ -157,17 +170,22 @@ class LCA_ADAM_time(base):
     def evalAndPlotWeights(self, feedDict, prefix):
         np_weights = self.sess.run(self.V1_W, feed_dict=feedDict)
         (ntime, ny, nx, nfns, nf) = np_weights.shape
-        np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, nfns/2, 2, nf))
-        for s in range(2):
+        if(stereo):
+            np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, nfns/2, 2, nf))
+            for s in range(2):
+                filename = prefix
+                if(s == 0):
+                    filename += "_left"
+                elif(s == 1):
+                    filename += "_right"
+                for t in range(ntime):
+                    plotWeights = np_weights_reshape[t, :, :, :, s, :]
+                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2])
+        else:
             filename = prefix
-            if(s == 0):
-                filename += "_left"
-            elif(s == 1):
-                filename += "_right"
             for t in range(ntime):
-                filename += "_time" + str(t) + ".png"
-                plotWeights = np_weights_reshape[t, :, :, :, s, :]
-                plot_weights(plotWeights, filename, [3, 0, 1, 2])
+                plotWeights = np_weights_reshape[t, :, :, :, :]
+                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2])
 
     def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
