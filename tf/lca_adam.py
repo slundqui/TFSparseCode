@@ -94,9 +94,9 @@ class LCA_ADAM(base):
 
                 #Find gradient wrt A
                 self.lossGrad = self.optimizerA1.compute_gradients(self.reconError, [self.V1_A])
+                #Apply such gradient to U
                 self.dU = [(self.lossGrad[0][0] - self.V1_A + self.V1_U, self.V1_U)];
 
-                #TODO add momentum or ADAM here
                 self.optimizerA = self.optimizerA1.apply_gradients(self.dU)
 
                 self.optimizerW = tf.train.AdadeltaOptimizer(self.learningRateW, epsilon=1e-6).minimize(self.loss,
@@ -167,7 +167,8 @@ class LCA_ADAM(base):
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
-            plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
+            np_v1 = self.sess.run(self.V1_A, feed_dict=feedDict)
+            plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png", v1Rank=np_v1)
             #Draw recons
             np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)

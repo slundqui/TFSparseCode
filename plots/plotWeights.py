@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pdb
 
 #Order defines the order in weights_matrix for num_weights, t, y, x, f
-def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4]):
+def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=None):
     assert(weights_matrix.ndim == 5)
     num_weights = weights_matrix.shape[order[0]]
     patch_t = weights_matrix.shape[order[1]]
@@ -19,10 +19,10 @@ def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4]):
 
     for t in range(patch_t):
         outFilename = outPrefix + "_frame" + str(t) + ".png"
-        plot_weights(permute_weights[:, t, :, :, :], outFilename)
+        plot_weights(permute_weights[:, t, :, :, :], outFilename, v1Rank)
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
-def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
+def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None):
     print "Creating plot"
     assert(weights_matrix.ndim == 4)
     num_weights = weights_matrix.shape[order[0]]
@@ -36,13 +36,34 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
         permute_weights = weights_matrix.copy()
         permute_weights = np.transpose(weights_matrix, order)
 
+    if v1Rank is not None:
+        #Flatten and count v1
+        axis = () #empty tuple
+        for i in range(v1Rank.ndim-1):
+            axis += (i,)
+        rankVals = np.sum(v1Rank, axis=axis)
+        rankIdx = np.argsort(rankVals)[::-1]
+        #Make val histogram
+        x = range(num_weights)
+        y = [rankVals[i] for i in rankIdx]
+        fig = plt.figure()
+        plt.bar(x, y)
+        plt.savefig(outFilename+"_v1Hist.png")
+        plt.close(fig)
+
     subplot_x = int(np.ceil(np.sqrt(num_weights)))
     subplot_y = int(np.ceil(num_weights/float(subplot_x)))
 
     outWeightMat = np.zeros((patch_y*subplot_y, patch_x*subplot_x, patch_f)).astype(np.float32)
 
+    if v1Rank is not None:
+        rangeWeight = rankIdx;
+    else:
+        rangeWeight = range(num_weights)
+
     #Normalize each patch individually
     for weight in range(num_weights):
+        weightIdx = rangeWeight[weight]
         weight_y = weight/subplot_x
         weight_x = weight%subplot_x
 
@@ -52,7 +73,7 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
         startIdx_y = weight_y*patch_y
         endIdx_y = startIdx_y+patch_y
 
-        weight_patch = permute_weights[weight, :, :, :].astype(np.float32)
+        weight_patch = permute_weights[weightIdx, :, :, :].astype(np.float32)
 
         #Set mean to 0
         weight_patch = weight_patch - np.mean(weight_patch)

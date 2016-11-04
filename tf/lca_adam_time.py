@@ -57,7 +57,7 @@ class LCA_ADAM_time(base):
         V_Y = int(inputShape[1]/self.VStrideY)
         V_X = int(inputShape[2]/self.VStrideX)
 
-        if(stereo):
+        if(self.stereo):
             numTime = inputShape[0]/2
             numFeatures = inputShape[3]*2
         else:
@@ -77,7 +77,7 @@ class LCA_ADAM_time(base):
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.inputImage = node_variable((self.batchSize,) + inputShape, "inputImage")
-                if(stereo):
+                if(self.stereo):
                     #We split the time dimension to stereo and concatenate with feature dim
                     self.reshapeImage = tf.reshape(self.inputImage,
                             [self.batchSize, inputShape[0]/2, 2, inputShape[1], inputShape[2], inputShape[3]])
@@ -169,8 +169,9 @@ class LCA_ADAM_time(base):
 
     def evalAndPlotWeights(self, feedDict, prefix):
         np_weights = self.sess.run(self.V1_W, feed_dict=feedDict)
+        np_v1 = self.sess.run(self.V1_A, feed_dict=feedDict)
         (ntime, ny, nx, nfns, nf) = np_weights.shape
-        if(stereo):
+        if(self.stereo):
             np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, nfns/2, 2, nf))
             for s in range(2):
                 filename = prefix
@@ -180,12 +181,12 @@ class LCA_ADAM_time(base):
                     filename += "_right"
                 for t in range(ntime):
                     plotWeights = np_weights_reshape[t, :, :, :, s, :]
-                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2])
+                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1)
         else:
             filename = prefix
             for t in range(ntime):
                 plotWeights = np_weights_reshape[t, :, :, :, :]
-                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2])
+                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1)
 
     def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
@@ -246,12 +247,12 @@ class LCA_ADAM_time(base):
     #inData must be in the shape of the image
     #[batch, nY, nX, nF]
     def evalData(self, inData):
-        (nb, ny, nx, nf) = inData.shape
-        #Check size
-        assert(nb == self.batchSize)
-        assert(ny == self.inputShape[0])
-        assert(nx == self.inputShape[1])
-        assert(nf == self.inputShape[2])
+        #(nb, ny, nx, nf) = inData.shape
+        ##Check size
+        #assert(nb == self.batchSize)
+        #assert(ny == self.inputShape[0])
+        #assert(nx == self.inputShape[1])
+        #assert(nf == self.inputShape[2])
 
         feedDict = {self.inputImage: inData}
         self.encodeImage(feedDict)
@@ -270,10 +271,11 @@ class LCA_ADAM_time(base):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
             npV1_A = self.evalData(self.currImg)
-            v1Sparse = convertToSparse4d(npV1_A)
+            v1Sparse = convertToSparse5d(npV1_A)
             time = range(it*self.batchSize, (it+1)*self.batchSize)
             data = {"values":v1Sparse, "time":time}
-            pvFile.write(data, shape=(self.VShape[1], self.VShape[2], self.VShape[3]))
+            #Combining y and time axis
+            pvFile.write(data, shape=(self.VShape[1] * self.VShape[2], self.VShape[3], self.VShape[4]))
             self.currImg = self.dataObj.getData(self.batchSize)[0]
         pvFile.close()
 
