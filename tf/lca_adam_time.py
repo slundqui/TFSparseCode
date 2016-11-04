@@ -185,7 +185,7 @@ class LCA_ADAM_time(base):
         else:
             filename = prefix
             for t in range(ntime):
-                plotWeights = np_weights_reshape[t, :, :, :, :]
+                plotWeights = np_weights[t, :, :, :, :]
                 plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1)
 
     def encodeImage(self, feedDict):

@@ -13,9 +13,9 @@ import pdb
 #Paths to list of filenames
 #Since we reshape from 6 to 3x2 (3 time, 2 stereo), left/right spin fastest
 trainInputs = [
-            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft0.pvp",
+            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft0.pvp",
             #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight0.pvp",
-            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft1.pvp",
+            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft1.pvp",
             #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight1.pvp",
             "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft2.pvp",
             #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight2.pvp",
@@ -56,7 +56,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_kitti_time/",
+    'runDir':          "/lca_adam_kitti_single/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -71,9 +71,9 @@ params = {
     'writeStep':       300,
     #Flag for loading weights from checkpoint
     'load':            True,
-    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/lca_adam_kitti_time.ckpt",
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/lca_adam_kitti_single.ckpt",
     #Device to run on
-    'device':          '/gpu:1',
+    'device':          '/gpu:0',
     #####FISTA PARAMS######
     'numIterations':   100000,
     'displayPeriod':   300,
@@ -91,7 +91,7 @@ params = {
     'VStrideY':        4,
     'VStrideX':        4,
     #Patch size
-    'patchSizeT':      2,
+    'patchSizeT':      1,
     'patchSizeY':      15,
     'patchSizeX':      32,
     'stereo':          False,
