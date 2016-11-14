@@ -260,24 +260,58 @@ class LCA_ADAM_time(base):
         outVals = self.V1_A.eval(session=self.sess)
         return outVals
 
-    def evalSet(self, evalDataObj, outFilename):
+    def evalSet(self, evalDataObj, outPrefix):
         numImages = evalDataObj.numImages
         #skip must be 1 for now
         assert(evalDataObj.skip == 1)
         numIterations = int(np.ceil(float(numImages)/self.batchSize))
 
-        pvFile = pvpOpen(outFilename, 'w')
+        (batchSize, nt, ny, nx, nf) = self.VShape
+
+        if(self.stereo):
+            numTime = nt*2
+        else:
+            numTime = nt
+
+        pvpFileList = []
+        for t in range(numTime):
+            suffix = ""
+            if self.stereo:
+                #Time idx
+                time = int(np.floor(t/2))
+                suffix += "_time_"+str(time)
+                #left eye
+                if t%2 == 0:
+                    suffix += "_left.pvp"
+                else:
+                    suffix += "_right.pvp"
+            else:
+                suffix += "_time_"+str(t)+".pvp"
+            pvpFileList.append(pvpOpen(outPrefix+suffix, 'w'))
+
         for it in range(numIterations):
             print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
             #Evaluate
             npV1_A = self.evalData(self.currImg)
-            v1Sparse = convertToSparse5d(npV1_A)
-            time = range(it*self.batchSize, (it+1)*self.batchSize)
-            data = {"values":v1Sparse, "time":time}
-            #Combining y and time axis
-            pvFile.write(data, shape=(self.VShape[1] * self.VShape[2], self.VShape[3], self.VShape[4]))
+            if(self.stereo):
+                numN = np.floor(nf/2)
+                reshape_v1 = np.reshape(npV1_A, (batchSize, nt, ny, nx, numN, 2))
+                permute_v1 = np.transpose(reshape_v1, (0, 1, 5, 2, 3, 4))
+                out_v1 = np.reshape(permute_v1, (batchSize, numTime, ny, nx, numN))
+            else:
+                numN = nf
+                out_v1 = npV1_A
+
+            for t in range(numTime):
+                singleV1 = out_v1[:, t, :, :, :]
+                v1Sparse = convertToSparse4d(singleV1)
+                time = range(it*self.batchSize, (it+1)*self.batchSize)
+                data = {"values":v1Sparse, "time":time}
+                pvpFileList[t].write(data, shape=(ny, nx, numN))
+
             self.currImg = self.dataObj.getData(self.batchSize)[0]
-        pvFile.close()
+        for t in range(numTime):
+            pvpFileList[t].close()
 
     def writePvpWeights(self, outputPrefix, rect=False):
         npw = self.sess.run(self.V1_W)

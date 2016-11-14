@@ -48,15 +48,16 @@ testf.close()
 testRange = [int(l) for l in testLines]
 
 #Get object from which tensorflow will pull data from
-trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=trainRange, getGT=False)
-testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=testRange, getGT=False)
+trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=False, getGT=False)
+#trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=trainRange, getGT=False)
+#testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=testRange, getGT=False)
 
 #FISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_kitti_stereo/",
+    'runDir':          "/lca_adam_kitti_eval_stereo/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -100,10 +101,18 @@ params = {
 #Allocate tensorflow object
 tfObj = LCA_ADAM_time(params, trainDataObj)
 print "Done init"
-
-tfObj.runModel()
+outPrefix = params["outDir"] + params["runDir"] + "kitti_lca_train_eval_stereo"
+tfObj.evalSet(trainDataObj, outPrefix)
 print "Done run"
 
 tfObj.closeSess()
 
+##Allocate tensorflow object
+#tfObj = LCA_ADAM_time(params, testDataObj)
+#print "Done init"
+#outFilename = params["outDir"] + params["runDir"] + "kitti_lca_test_eval.pvp"
+#tfObj.evalSet(testDataObj, outFilename)
+#print "Done run"
+#
+#tfObj.closeSess()
 

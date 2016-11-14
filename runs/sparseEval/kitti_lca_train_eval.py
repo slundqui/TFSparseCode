@@ -13,10 +13,10 @@ import pdb
 #Paths to list of filenames
 #Since we reshape from 6 to 3x2 (3 time, 2 stereo), left/right spin fastest
 trainInputs = [
-            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft0.pvp",
-            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight0.pvp",
-            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft1.pvp",
-            #"/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight1.pvp",
+            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft0.pvp",
+            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight0.pvp",
+            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft1.pvp",
+            "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight1.pvp",
             "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameLeft2.pvp",
             "/home/slundquist/mountData/kitti_pv/objdet_train2/FrameRight2.pvp",
             ]
@@ -48,15 +48,16 @@ testf.close()
 testRange = [int(l) for l in testLines]
 
 #Get object from which tensorflow will pull data from
-trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=trainRange, getGT=False)
-testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=testRange, getGT=False)
+trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=False, getGT=False)
+#trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=trainRange, getGT=False)
+#testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=testRange, getGT=False)
 
 #FISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_kitti_stereo/",
+    'runDir':          "/lca_adam_kitti_eval/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -71,11 +72,11 @@ params = {
     'writeStep':       300,
     #Flag for loading weights from checkpoint
     'load':            True,
-    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/lca_adam_kitti_stereo.ckpt",
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/lca_adam_kitti.ckpt",
     #Device to run on
-    'device':          '/gpu:1',
+    'device':          '/gpu:0',
     #####FISTA PARAMS######
-    'numIterations':   100000,
+    'numIterations':   10000,
     'displayPeriod':   300,
     #Batch size
     'batchSize':       8,
@@ -91,7 +92,7 @@ params = {
     'VStrideY':        4,
     'VStrideX':        4,
     #Patch size
-    'patchSizeT':      1,
+    'patchSizeT':      2,
     'patchSizeY':      15,
     'patchSizeX':      32,
     'stereo':          True,
@@ -100,10 +101,18 @@ params = {
 #Allocate tensorflow object
 tfObj = LCA_ADAM_time(params, trainDataObj)
 print "Done init"
-
-tfObj.runModel()
+outPrefix = params["outDir"] + params["runDir"] + "kitti_lca_train_eval"
+tfObj.evalSet(trainDataObj, outPrefix)
 print "Done run"
 
 tfObj.closeSess()
 
+##Allocate tensorflow object
+#tfObj = LCA_ADAM_time(params, testDataObj)
+#print "Done init"
+#outFilename = params["outDir"] + params["runDir"] + "kitti_lca_test_eval.pvp"
+#tfObj.evalSet(testDataObj, outFilename)
+#print "Done run"
+#
+#tfObj.closeSess()
 

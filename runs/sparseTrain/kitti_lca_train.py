@@ -83,7 +83,7 @@ params = {
     'learningRateA':   1e-3,
     'learningRateW':   1,
     #Lambda in energy function
-    'thresh':          .005,
+    'thresh':          .0025,
     #Number of features in V1
     'numV':            3072,
     #Stride of V1
@@ -94,6 +94,7 @@ params = {
     'patchSizeT':      2,
     'patchSizeY':      15,
     'patchSizeX':      32,
+    'stereo':          True,
 }
 
 #Allocate tensorflow object
