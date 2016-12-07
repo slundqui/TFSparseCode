@@ -2,8 +2,8 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from base import base
-from plots.plotWeights import plot_weights
-from plots.plotRecon import plotRecon
+from plots.plotWeights import plot_1d_weights
+from plots.plotRecon import plotRecon1d
 from .utils import *
 #Using pvp files for saving
 from pvtools import *
@@ -47,7 +47,7 @@ class LCA_ADAM(base):
         V_Y = int(inputShape[0]/self.VStrideY)
         V_X = int(inputShape[1]/self.VStrideX)
         self.imageShape = (self.batchSize, inputShape[0], inputShape[1], inputShape[2])
-        self.WShape = (self.patchSizeY, self.patchSizeX, 3, self.numV)
+        self.WShape = (self.patchSizeY, self.patchSizeX, inputShape[2], self.numV)
         self.VShape = (self.batchSize, V_Y, V_X, self.numV)
 
         #Running on GPU
@@ -55,14 +55,21 @@ class LCA_ADAM(base):
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.inputImage = node_variable(self.imageShape, "inputImage")
+                #self.zeros = tf.zeros(self.imageShape)
+                #self.log_inputImage = tf.log(tf.abs(self.inputImage)) * tf.sign(self.inputImage)
+                #self.select_inputImage = tf.select(tf.is_nan(self.log_inputImage), self.zeros, self.log_inputImage)
+
+                #self.scaled_inputImage = self.scaled_inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
                 #Scale inputImage
-                self.scaled_inputImage = self.inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
+                self.scaled_inputImage = self.inputImage/(np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2]))
+                #self.checked_inputImage = tf.check_numerics(self.scaled_inputImage, "scaled_input error", name=None)
 
             with tf.name_scope("Dictionary"):
-                self.V1_W = sparse_weight_variable(self.WShape, "V1_W")
+                self.V1_W = weight_variable(self.WShape, "V1_W", 1e-3)
 
             with tf.name_scope("weightNorm"):
                 self.normVals = tf.sqrt(tf.reduce_sum(tf.square(self.V1_W), reduction_indices=[0, 1, 2], keep_dims=True))
+                self.normVals = tf.verify_tensor_all_finite(self.normVals, 'V1W error', name=None)
                 self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals + 1e-8))
 
             with tf.name_scope("LCA_ADAM"):
@@ -73,7 +80,8 @@ class LCA_ADAM(base):
                 assert(self.VStrideY >= 1)
                 assert(self.VStrideX >= 1)
                 #We build index tensor in numpy to gather
-                self.recon = conv2d_oneToMany(self.V1_A, self.V1_W, self.imageShape, "recon", self.VStrideY, self.VStrideX)
+                self.recon = tf.nn.conv2d_transpose(self.V1_A, self.V1_W, self.imageShape, [1, self.VStrideY, self.VStrideX, 1], padding='SAME', name="recon")
+                #self.recon = tf.check_numerics(self.recon, 'recon error', name=None)
 
             with tf.name_scope("Error"):
                 self.error = self.scaled_inputImage - self.recon
@@ -94,7 +102,8 @@ class LCA_ADAM(base):
 
                 #Find gradient wrt A
                 self.lossGrad = self.optimizerA1.compute_gradients(self.reconError, [self.V1_A])
-                self.dU = [(self.lossGrad[0][0] - self.V1_A + self.V1_U, self.V1_U)];
+                #self.checkGrad = tf.check_numerics(self.lossGrad[0][0], "grad error", name=None)
+                self.dU = [(self.lossGrad - self.V1_A + self.V1_U, self.V1_U)];
 
                 #TODO add momentum or ADAM here
                 self.optimizerA = self.optimizerA1.apply_gradients(self.dU)
@@ -107,13 +116,14 @@ class LCA_ADAM(base):
             with tf.name_scope("stats"):
                 self.nnz = tf.reduce_mean(tf.cast(tf.not_equal(self.V1_A, 0), tf.float32))
 
-                self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))*np.sqrt(self.patchSizeY*self.patchSizeX*inputShape[2])
+                self.imageStd = tf.sqrt(tf.reduce_mean(tf.square(self.scaled_inputImage - tf.reduce_mean(self.scaled_inputImage))))
+                self.errorStd = tf.sqrt(tf.reduce_mean(tf.square(self.error-tf.reduce_mean(self.error))))/self.imageStd
                 self.l1_mean = tf.reduce_mean(tf.abs(self.V1_A))
 
-                self.weightImages = tf.transpose(self.V1_W, [3, 0, 1, 2])
+                self.weightImages = tf.squeeze(tf.transpose(self.V1_W, [3, 0, 1, 2]))
 
                 #For log of activities
-                self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-15)
+                self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-13)
 
         #Summaries
         self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
@@ -124,6 +134,7 @@ class LCA_ADAM(base):
         self.s_s_nnz = tf.scalar_summary('nnz', self.nnz, name="nnz")
 
         self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
+        self.h_input = tf.histogram_summary('scale_input', self.scaled_inputImage, name="scale_input")
         self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
         self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
 
@@ -131,21 +142,25 @@ class LCA_ADAM(base):
         self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
         self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
 
-        self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
+        #self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
     def encodeImage(self, feedDict):
-        for i in range(self.displayPeriod):
-            #Run optimizer
-            #This calculates A
-            self.sess.run(self.optimizerA0, feed_dict=feedDict)
-            #This updates U based on loss function wrt A
-            self.sess.run(self.optimizerA, feed_dict=feedDict)
-            self.timestep+=1
-            if((i+1)%self.writeStep == 0):
-                summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
-                self.train_writer.add_summary(summary, self.timestep)
-            if((i+1)%self.progress == 0):
-                print "Timestep ", self.timestep
+        try:
+            for i in range(self.displayPeriod):
+                #Run optimizer
+                #This calculates A
+                self.sess.run(self.optimizerA0, feed_dict=feedDict)
+                #This updates U based on loss function wrt A
+                self.sess.run(self.optimizerA, feed_dict=feedDict)
+                self.timestep+=1
+                if((i+1)%self.writeStep == 0):
+                    summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
+                    self.train_writer.add_summary(summary, self.timestep)
+                if((i+1)%self.progress == 0):
+                    print "Timestep ", self.timestep
+        except:
+            print "Error"
+            pdb.set_trace()
 
     #Trains model for numSteps
     def trainA(self, save):
@@ -167,11 +182,22 @@ class LCA_ADAM(base):
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
-            plot_weights(np_V1_W, self.plotDir+"dict_"+str(self.timestep)+".png")
-            #Draw recons
+            np_V1_A = self.sess.run(self.V1_A)
+
+
+            rescaled_V1_W = np.exp(np.abs(np_V1_W * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_V1_W)
+            plot_1d_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+
             np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
-            plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+
+            #Draw recons
+            rescaled_inputImage = np.exp(np.abs(np_inputImage * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_inputImage)
+
+            rescaled_recon = np.exp(np.abs(np_recon * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_recon)
+
+            #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            plotRecon1d(np.squeeze(rescaled_recon), np.squeeze(rescaled_inputImage), self.plotDir+"recon_"+str(self.timestep), r=range(4))
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)

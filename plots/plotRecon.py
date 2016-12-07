@@ -22,3 +22,27 @@ def plotRecon(recon_matrix, img_matrix, outPrefix, r=None):
         plt.savefig(outPrefix+"_"+str(b)+".png")
         plt.close(f)
 
+#Recon must be in (batch, time)
+def plotRecon1d(recon_matrix, img_matrix, outPrefix, r=None):
+    (batch, nt) = recon_matrix.shape
+    (batchImg, ntImg) = img_matrix.shape
+
+    if r == None:
+        r = range(batch)
+
+    for b in r:
+        recon = recon_matrix[b, :]
+        img = img_matrix[b, :]
+        f, axarr = plt.subplots(2, 1)
+        axarr[0].plot(img)
+        axarr[0].set_title("orig")
+        axarr[1].plot(recon)
+        axarr[1].set_title("recon")
+        plt.savefig(outPrefix+"_"+str(b)+".png")
+        plt.close(f)
+        np.savetxt(outPrefix + "orig"+str(b)+".txt", img, delimiter=",")
+        np.savetxt(outPrefix + "recon"+str(b)+".txt", recon, delimiter=",")
+
+
+
+
