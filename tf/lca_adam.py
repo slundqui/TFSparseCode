@@ -2,8 +2,8 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from base import base
-from plots.plotWeights import plot_1d_weights
-from plots.plotRecon import plotRecon1d
+from plots.plotWeights import plot_weights
+from plots.plotRecon import plotRecon
 from .utils import *
 #Using pvp files for saving
 from pvtools import *
@@ -103,7 +103,7 @@ class LCA_ADAM(base):
                 #Find gradient wrt A
                 self.lossGrad = self.optimizerA1.compute_gradients(self.reconError, [self.V1_A])
                 #self.checkGrad = tf.check_numerics(self.lossGrad[0][0], "grad error", name=None)
-                self.dU = [(self.lossGrad - self.V1_A + self.V1_U, self.V1_U)];
+                self.dU = [(self.lossGrad[0][0] - self.V1_A + self.V1_U, self.V1_U)];
 
                 #TODO add momentum or ADAM here
                 self.optimizerA = self.optimizerA1.apply_gradients(self.dU)
@@ -186,7 +186,9 @@ class LCA_ADAM(base):
 
 
             rescaled_V1_W = np.exp(np.abs(np_V1_W * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_V1_W)
-            plot_1d_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+            #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+            plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep))
+            #plot_1d_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
 
             np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
@@ -196,8 +198,8 @@ class LCA_ADAM(base):
 
             rescaled_recon = np.exp(np.abs(np_recon * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_recon)
 
-            #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
-            plotRecon1d(np.squeeze(rescaled_recon), np.squeeze(rescaled_inputImage), self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            #plotRecon1d(np.squeeze(rescaled_recon), np.squeeze(rescaled_inputImage), self.plotDir+"recon_"+str(self.timestep), r=range(4))
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
