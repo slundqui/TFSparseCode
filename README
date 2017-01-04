@@ -9,6 +9,10 @@ ISTA: Chambolle, Antonin, et al. "Nonlinear wavelet image processing: variationa
 
 FISTA: Beck, Amir, and Marc Teboulle. "A fast iterative shrinkage-thresholding algorithm for linear inverse problems." SIAM journal on imaging sciences 2.1 (2009): 183-202.
 
+LCA: Rozell, Christopher, et al. "Locally competitive algorithms for sparse approximation." 2007 IEEE International Conference on Image Processing. Vol. 4. IEEE, 2007.
+
+LCA_ADAM: Modification of LCA to use ADAM optimizer for sparse approxmation as opposed to standard gradient descent with LCA.
+
 Prerequisites:
 TensorFlow
 Python 2.7
