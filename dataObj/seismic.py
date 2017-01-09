@@ -1,55 +1,53 @@
-import tensorflow as tf
+import random
 import pdb
 import numpy as np
 
+def readFile(filename):
+    fn = open(filename, 'r')
+    content = fn.readlines()
+    fn.close()
+    return [f[:-1] for f in content] #Remove new lines
 
 class seismicData(object):
-    exampleSize = 100
-    inputShape = [1, 100, 1]
-    def read_and_decode_single_example(self, filename):
-        # first construct a queue containing a list of filenames.
-        # this lets a user split up there dataset in multiple files to keep
-        # size down
-        filename_queue = tf.train.string_input_producer([filename],
-                                                        num_epochs=None)
-        # Unlike the TFRecordWriter, the TFRecordReader is symbolic
-        reader = tf.TFRecordReader()
-        # One can read a single serialized example from a filename
-        # serialized_example is a Tensor of type string.
-        _, serialized_example = reader.read(filename_queue)
-        # The serialized example is converted back to actual values.
-        # One needs to describe the format of the objects to be returned
-        features = tf.parse_single_example(
-            serialized_example,
-            features={
-                # We know the length of both fields. If not the
-                # tf.VarLenFeature could be used
-                'data': tf.FixedLenFeature([self.exampleSize], tf.float32)
-            })
-        # now return the converted data
-        data = features['data']
-        return data
+    #filename is a list of filenames that contain seismic data
+    def __init__(self, filename, exampleSize, seed=None):
+        if seed is not None:
+            random.seed(seed)
+        #TODO fix to allow for multiple streams
+        self.exampleSize = exampleSize
+        self.inputShape = [1, exampleSize, 1]
+        #Read list of filenames and store into member variable
+        self.fnList = readFile(filename)
 
-    def __init__(self, filename):
-        # get single examples
-        data = self.read_and_decode_single_example(filename)
-        # groups examples into batches randomly
-        self.data_batch = tf.train.shuffle_batch(
-                    [data], batch_size=128,
-                        capacity=2000,
-                            min_after_dequeue=1000)
-        self.sess = tf.Session()
-        init = tf.initialize_all_variables()
-        self.sess.run(init)
-        tf.train.start_queue_runners(sess=self.sess)
+    def getExample(self):
+        #Get random file from fnList
+        #If length of data in file is less than example size, skip
+        numData = 0
+        while numData < self.exampleSize:
+            filename = random.choice(self.fnList)
+            data = readFile(filename)
+            numData = len(data)
+        #Generate starting point of data
+        #Must contain a full example
+        startIdx = random.randint(0, numData-self.exampleSize)
+        dataVals = [float(s.split(',')[1]) for s in data[startIdx:startIdx+self.exampleSize]]
+        dataVals = np.array(dataVals)
+        #Make sure there are no 0s in the seismic data (for log scale)
+        dataVals[np.nonzero(np.logical_and(dataVals>-1, dataVals<1))] = 1
+        #Set to log scale
+        logDataVals = np.log(np.abs(dataVals)) * np.sign(dataVals)
+        return logDataVals
 
     def getData(self, batchSize):
-        assert(batchSize == 128)
-        data = self.sess.run(self.data_batch)
-        data = np.expand_dims(data, 1)
-        data = np.expand_dims(data, 3)
-        return data
+        outVals = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        for b in range(batchSize):
+            outVals[b, 0, :, 0] = self.getExample()
+        return outVals
 
-
-
-
+if __name__=="__main__":
+    listOfFn = "/home/sheng/mountData/seismic/seismic.txt"
+    #How many timesteps to store as one exmple
+    exampleSize = 100
+    obj = seismicData(listOfFn, exampleSize, "asdf")
+    e = obj.getData(10)
+    pdb.set_trace()

@@ -10,9 +10,10 @@ import pdb
 #testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 
-filename = "/home/sheng/mountData/seismicData/smallSeismic.tfrecords"
+filename = "/home/sheng/mountData/seismic/seismic.txt"
+exampleSize = 100
 #Get object from which tensorflow will pull data from
-trainDataObj = seismicData(filename)
+trainDataObj = seismicData(filename, exampleSize)
 
 #FISTA params
 params = {
