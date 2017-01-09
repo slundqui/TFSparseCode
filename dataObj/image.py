@@ -1,6 +1,6 @@
 import scipy.io as spio
 from scipy.ndimage import imread
-from scipy.misc import imresize
+from scipy.misc.pilutil import imresize
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
