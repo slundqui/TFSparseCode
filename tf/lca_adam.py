@@ -2,8 +2,8 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from base import base
-from plots.plotWeights import plot_weights
-from plots.plotRecon import plotRecon
+from plots.plotWeights import plot_weights, plot_1d_weights
+from plots.plotRecon import plotRecon, plotRecon1d
 from .utils import *
 #Using pvp files for saving
 from pvtools import *
@@ -184,22 +184,29 @@ class LCA_ADAM(base):
             np_V1_W = self.sess.run(self.weightImages)
             np_V1_A = self.sess.run(self.V1_A)
 
-
-            rescaled_V1_W = np.exp(np.abs(np_V1_W * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_V1_W)
             #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
-            plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep))
-            #plot_1d_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+
+            plotStr = self.plotDir + "dict_"+str(self.timestep)
+            if(np_V1_W.ndim == 2):
+                rescaled_V1_W = np.exp(np.abs(np_V1_W * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_V1_W)
+                plot_1d_weights(rescaled_V1_W, plotStr, activity=np_V1_A)
+            else:
+                plot_weights(V1_W, plotStr)
 
             np_inputImage = self.currImg
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
 
             #Draw recons
-            rescaled_inputImage = np.exp(np.abs(np_inputImage * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_inputImage)
+            if(np.squeeze(np_recon).ndim == 2):
+                rescaled_inputImage = np_inputImage * np.sqrt(self.patchSizeX * self.patchSizeY)
+                rescaled_recon = np_recon * np.sqrt(self.patchSizeX * self.patchSizeY)
 
-            rescaled_recon = np.exp(np.abs(np_recon * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_recon)
+                exp_inputImage = np.squeeze(np.exp(np.abs(rescaled_inputImage) - 1e-10) * np.sign(np_inputImage))
+                exp_recon = np.squeeze(np.exp(np.abs(rescaled_recon) - 1e-10) * np.sign(np_recon))
 
-            plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
-            #plotRecon1d(np.squeeze(rescaled_recon), np.squeeze(rescaled_inputImage), self.plotDir+"recon_"+str(self.timestep), r=range(4))
+                plotRecon1d(exp_recon, exp_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            else:
+                plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
