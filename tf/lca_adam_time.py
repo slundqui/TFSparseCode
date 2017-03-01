@@ -4,6 +4,7 @@ import tensorflow as tf
 from base import base
 from plots.plotWeights import plot_weights
 from plots.plotRecon import plotRecon
+from plots.plotFeaturemaps import plotFeaturemaps
 from .utils import *
 #Using pvp files for saving
 from pvtools import *
@@ -12,6 +13,14 @@ class LCA_ADAM_time(base):
     #Global timestep
     timestep = 0
     plotTimestep = 0
+
+    def makeDirs(self):
+        super(LCA_ADAM_time, self).makeDirs()
+        makeDir(self.reconDir)
+        makeDir(self.weightDir)
+        makeDir(self.featureMapDir)
+
+
     #Sets dictionary of params to member variables
     def loadParams(self, params):
         super(LCA_ADAM_time, self).loadParams(params)
@@ -27,6 +36,11 @@ class LCA_ADAM_time(base):
         self.patchSizeX = params['patchSizeX']
         self.stereo = params['stereo']
         self.plotInd = params['plotInd']
+        self.plotFM = params['plotFM']
+
+        self.reconDir = self.plotDir + "/recon/"
+        self.weightDir = self.plotDir + "/weight/"
+        self.featureMapDir = self.plotDir + "/featuremap/"
 
     def runModel(self):
         #Normalize weights to start
@@ -168,6 +182,21 @@ class LCA_ADAM_time(base):
 
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
+    def evalAndPlotFeaturemaps(self, feedDict, prefix):
+        print "Plotting featuremaps"
+        np_v1 = self.sess.run(self.V1_A, feed_dict=feedDict)
+        np_inputImage = self.currImg
+        #We only care about the left last frame
+        #TODO make the indices general
+        np_v1 = np_v1[:, 1, :, :, :]
+        if(self.stereo):
+            np_inputImage = np_inputImage[:, 4, :, :, :]
+        else:
+            np_inputImage = np_inputImage[:, 2, :, :, :]
+
+        plotFeaturemaps(np_v1, np_inputImage, prefix, r=[2])
+        #plotFeaturemaps(np_v1, np_inputImage, prefix, r=[1])
+
     def evalAndPlotWeights(self, feedDict, prefix):
         print "Plotting weights"
         np_weights = self.sess.run(self.V1_W, feed_dict=feedDict)
@@ -183,15 +212,15 @@ class LCA_ADAM_time(base):
                     filename += "_right"
                 for t in range(ntime):
                     plotWeights = np_weights_reshape[t, :, :, :, s, :]
-                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
+                    plot_weights(plotWeights, filename + "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
         else:
             filename = prefix
             for t in range(ntime):
                 plotWeights = np_weights[t, :, :, :, :]
-                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
+                plot_weights(plotWeights, filename + "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
 
     def evalAndPlotRecons(self, feedDict, prefix):
-        print "Plotting weights"
+        print "Plotting recons"
         np_recon = self.sess.run(self.recon, feed_dict=feedDict)
         np_inputImage = self.sess.run(self.padInput, feed_dict=feedDict)
         (batch, ntime, ny, nx, nf) = np_recon.shape
@@ -264,11 +293,12 @@ class LCA_ADAM_time(base):
             #np_recon = self.sess.run(self.recon, feed_dict=feedDict)
 
             #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
-            filename = self.plotDir + "train_" + str(self.timestep)
+            suffix = "/train_" + str(self.timestep)
+            if(self.plotFM):
+                self.evalAndPlotFeaturemaps(feedDict, self.featureMapDir + suffix)
+            self.evalAndPlotWeights(feedDict, self.weightDir + suffix)
+            self.evalAndPlotRecons(feedDict, self.reconDir + suffix)
 
-            self.evalAndPlotWeights(feedDict, filename)
-
-            self.evalAndPlotRecons(feedDict, filename)
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)

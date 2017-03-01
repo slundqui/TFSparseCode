@@ -76,7 +76,7 @@ params = {
     'device':          '/gpu:0',
     #####FISTA PARAMS######
     'numIterations':   1,
-    'displayPeriod':   10, #300,
+    'displayPeriod':   300,
     #Batch size
     'batchSize':       8,
     #Learning rate for optimizer
@@ -96,10 +96,11 @@ params = {
     'patchSizeX':      32,
     'stereo':          True,
     'plotInd': True,
+    'plotFM': True,
 }
 
 #Allocate tensorflow object
-tfObj = LCA_ADAM_time(params, trainDataObj)
+tfObj = LCA_ADAM_time(params, testDataObj)
 print "Done init"
 
 tfObj.runModel()

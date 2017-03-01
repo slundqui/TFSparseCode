@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.misc as spmisc
 import pdb
+from tf.utils import makeDir
 
 #Order defines the order in weights_matrix for num_weights, t, y, x, f
 def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=None, plotInd=False):
@@ -62,6 +63,10 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
     else:
         rangeWeight = range(num_weights)
 
+    if(plotInd):
+        indOutDir = outFilename + "_ind/"
+        makeDir(indOutDir)
+
     #Normalize each patch individually
     for weight in range(num_weights):
         weightIdx = rangeWeight[weight]
@@ -86,9 +91,9 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
 
         if plotInd:
             if v1Rank is None:
-                saveStr = outFilename + "_weight_" + str(weightIdx) + ".png"
+                saveStr = indOutDir + "weight_" + str(weightIdx) + ".png"
             else:
-                saveStr = outFilename + "_rank_" + str(weight) + "_weight_" + str(weightIdx) + ".png"
+                saveStr = indOutDir + "rank_" + str(weight) + "_weight_" + str(weightIdx) + ".png"
             print saveStr
             spmisc.imsave(saveStr, weight_patch)
             #fig = plt.figure()

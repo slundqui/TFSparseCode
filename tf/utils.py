@@ -3,6 +3,12 @@ import tensorflow as tf
 import pdb
 from scipy import sparse
 from pvtools import readpvpfile
+import os
+
+def makeDir(dirname):
+    if not os.path.exists(dirname):
+       os.makedirs(dirname)
+
 
 def convertToSparse5d(m):
     [nb, nt, ny, nx, nf] = m.shape

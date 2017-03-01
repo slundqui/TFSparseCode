@@ -2,7 +2,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 import os
-from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
+from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr, makeDir
 #import matplotlib.pyplot as plt
 #from pvtools import writepvpfile
 
@@ -33,12 +33,9 @@ class base(object):
 
     #Make approperiate directories if they don't exist
     def makeDirs(self):
-        if not os.path.exists(self.runDir):
-           os.makedirs(self.runDir)
-        if not os.path.exists(self.plotDir):
-           os.makedirs(self.plotDir)
-        if not os.path.exists(self.ckptDir):
-           os.makedirs(self.ckptDir)
+        makeDir(self.runDir)
+        makeDir(self.plotDir)
+        makeDir(self.ckptDir)
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
