@@ -26,6 +26,7 @@ class LCA_ADAM_time(base):
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
         self.stereo = params['stereo']
+        self.plotInd = params['plotInd']
 
     def runModel(self):
         #Normalize weights to start
@@ -168,6 +169,7 @@ class LCA_ADAM_time(base):
         self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
     def evalAndPlotWeights(self, feedDict, prefix):
+        print "Plotting weights"
         np_weights = self.sess.run(self.V1_W, feed_dict=feedDict)
         np_v1 = self.sess.run(self.V1_A, feed_dict=feedDict)
         (ntime, ny, nx, nfns, nf) = np_weights.shape
@@ -181,12 +183,40 @@ class LCA_ADAM_time(base):
                     filename += "_right"
                 for t in range(ntime):
                     plotWeights = np_weights_reshape[t, :, :, :, s, :]
-                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1)
+                    plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
         else:
             filename = prefix
             for t in range(ntime):
                 plotWeights = np_weights[t, :, :, :, :]
-                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1)
+                plot_weights(plotWeights, filename + "_time" + str(t) + ".png", [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
+
+    def evalAndPlotRecons(self, feedDict, prefix):
+        print "Plotting weights"
+        np_recon = self.sess.run(self.recon, feed_dict=feedDict)
+        np_inputImage = self.sess.run(self.padInput, feed_dict=feedDict)
+        (batch, ntime, ny, nx, nf) = np_recon.shape
+        #Shape recon and image into (batch, time, ny, nx, nfcolor, stereo)
+
+        if(self.stereo):
+            np_recon = np.reshape(np_recon, [batch, ntime, ny, nx, nf/2, 2])
+            np_inputImage = np.reshape(np_inputImage, [batch, ntime, ny, nx, nf/2, 2])
+            for s in range(2):
+                filename = prefix
+                if(s == 0):
+                    filename += "_left"
+                elif(s == 1):
+                    filename += "_right"
+                for t in range(ntime):
+                    recon = np_recon[:, t, :, :, :, s]
+                    image = np_inputImage[:, t, :, :, :, s]
+
+                    plotRecon(recon, image, filename + "_recon_time" + str(t) + "_batch")
+        else:
+            filename = prefix
+            for t in range(ntime):
+                recon = np_recon[:, t, :, :, :]
+                image = np_inputImage[:, t, :, :, :]
+                plotRecon(recon, image, filename + "_recon_time" + str(t) + "_batch")
 
     def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
@@ -232,9 +262,13 @@ class LCA_ADAM_time(base):
             #Draw recons
             #np_inputImage = self.currImg
             #np_recon = self.sess.run(self.recon, feed_dict=feedDict)
+
             #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
             filename = self.plotDir + "train_" + str(self.timestep)
-            self.evalAndPlotWeights(feedDict, filename)
+
+            #self.evalAndPlotWeights(feedDict, filename)
+
+            self.evalAndPlotRecons(feedDict, filename)
 
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)

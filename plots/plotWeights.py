@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.misc as spmisc
 import pdb
 
 #Order defines the order in weights_matrix for num_weights, t, y, x, f
-def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=None):
+def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=None, plotInd=False):
     assert(weights_matrix.ndim == 5)
     num_weights = weights_matrix.shape[order[0]]
     patch_t = weights_matrix.shape[order[1]]
@@ -18,11 +19,11 @@ def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=N
         permute_weights = np.transpose(weights_matrix, order)
 
     for t in range(patch_t):
-        outFilename = outPrefix + "_frame" + str(t) + ".png"
+        outFilename = outPrefix + "_frame" + str(t)
         plot_weights(permute_weights[:, t, :, :, :], outFilename, v1Rank)
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
-def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None):
+def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, plotInd = False):
     print "Creating plot"
     assert(weights_matrix.ndim == 4)
     num_weights = weights_matrix.shape[order[0]]
@@ -81,16 +82,28 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None):
         weight_patch = weight_patch / scaleVal
         weight_patch = (weight_patch + 1)/2
 
+        if plotInd:
+            if v1Rank is None:
+                saveStr = outFilename + "_weight_" + str(weightIdx) + ".png"
+            else:
+                saveStr = outFilename + "_rank_" + str(weight) + "_weight_" + str(weightIdx) + ".png"
+            print saveStr
+            spmisc.imsave(saveStr, weight_patch)
+            #fig = plt.figure()
+            #plt.imshow(weight_patch)
+            #plt.savefig(saveStr)
+            #plt.close(fig)
+
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
     fig = plt.figure()
     plt.imshow(outWeightMat)
-    plt.savefig(outFilename)
+    plt.savefig(outFilename + ".png")
     plt.close(fig)
 
     fig = plt.figure()
     plt.hist(weights_matrix.flatten(), 50)
-    plt.savefig(outFilename + ".hist.png")
+    plt.savefig(outFilename + "_hist.png")
     plt.close(fig)
 
 
