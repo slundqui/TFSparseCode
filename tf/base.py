@@ -75,11 +75,11 @@ class base(object):
            self.loadModel()
 
     def getLoadVars(self):
-        return tf.all_variables()
+        return tf.global_variables()
 
     #Initializes session.
     def initSess(self):
-        self.sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.global_variables_initializer())
 
     def closeSess(self):
         self.sess.close()

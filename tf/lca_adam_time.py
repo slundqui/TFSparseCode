@@ -266,7 +266,7 @@ class LCA_ADAM_time(base):
             #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
             filename = self.plotDir + "train_" + str(self.timestep)
 
-            #self.evalAndPlotWeights(feedDict, filename)
+            self.evalAndPlotWeights(feedDict, filename)
 
             self.evalAndPlotRecons(feedDict, filename)
 

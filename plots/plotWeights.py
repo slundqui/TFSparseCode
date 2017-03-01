@@ -76,10 +76,12 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
 
         weight_patch = permute_weights[weightIdx, :, :, :].astype(np.float32)
 
-        #Set mean to 0
-        weight_patch = weight_patch - np.mean(weight_patch)
+        #weight_patch = weight_patch - np.mean(weight_patch)
+        #Find max magnitude
         scaleVal = np.max([np.fabs(weight_patch.max()), np.fabs(weight_patch.min())])
+        #Scale to be between -1 and 1
         weight_patch = weight_patch / scaleVal
+        #Set scale to be between 0 and 1, with 0 in orig weight_patch to be .5
         weight_patch = (weight_patch + 1)/2
 
         if plotInd:

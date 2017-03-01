@@ -48,15 +48,15 @@ testf.close()
 testRange = [int(l) for l in testLines]
 
 #Get object from which tensorflow will pull data from
-trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=trainRange, getGT=False)
-testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=True, rangeIdx=testRange, getGT=False)
+trainDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=False, rangeIdx=trainRange, getGT=False)
+testDataObj = kittiVidPvObj(trainInputs, trainGts, trainFilenames, dncFilenames, None, shuffle=False, rangeIdx=testRange, getGT=False)
 
 #FISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_kitti_plot/",
+    'runDir':          "/plot_lca_adam_kitti/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -73,10 +73,10 @@ params = {
     'load':            True,
     'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/lca_adam_kitti.ckpt",
     #Device to run on
-    'device':          '/gpu:1',
+    'device':          '/gpu:0',
     #####FISTA PARAMS######
-    'numIterations':   10000,
-    'displayPeriod':   300,
+    'numIterations':   1,
+    'displayPeriod':   10, #300,
     #Batch size
     'batchSize':       8,
     #Learning rate for optimizer
