@@ -2,11 +2,11 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from base import base
-from plots.plotWeights import plot_weights, plot_1d_weights
-from plots.plotRecon import plotRecon, plotRecon1d
+from plots.plotWeights import plot_weights
+from plots.plotRecon import plotRecon
 from .utils import *
 #Using pvp files for saving
-from pvtools import *
+import pvtools as pv
 
 class LCA_ADAM(base):
     #Sets dictionary of params to member variables
@@ -34,6 +34,8 @@ class LCA_ADAM(base):
            #Train
            self.trainW()
            self.normWeights()
+           #This function is responsible for determining when to plot per iteration
+           self.plot()
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
@@ -176,9 +178,8 @@ class LCA_ADAM(base):
         #Normalize weights
         self.sess.run(self.normalize_W)
 
-    def trainW(self):
-        feedDict = {self.inputImage: self.currImg}
 
+    def plot(self):
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
             np_V1_W = self.sess.run(self.weightImages)
@@ -208,11 +209,13 @@ class LCA_ADAM(base):
             else:
                 plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
 
+        self.plotTimestep += 1
+    def trainW(self):
+        feedDict = {self.inputImage: self.currImg}
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
         #New image
         self.currImg = self.dataObj.getData(self.batchSize)
-        self.plotTimestep += 1
 
 
     #Finds sparse encoding of inData
@@ -267,5 +270,5 @@ class LCA_ADAM(base):
         pvp = {}
         pvp['values'] = outWeights
         pvp['time'] = np.array([0])
-        writepvpfile(filename, pvp)
+        pv.writepvpfile(filename, pvp)
 
