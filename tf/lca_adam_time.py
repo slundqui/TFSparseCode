@@ -59,7 +59,11 @@ class LCA_ADAM_time(base):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(LCA_ADAM_time, self).__init__(params, dataObj)
-        self.currImg = self.dataObj.getData(self.batchSize)[0]
+        data = self.dataObj.getData(self.batchSize)
+        self.currImg = data[0]
+
+        pdb.set_trace()
+        #TODO set ground truth
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
@@ -81,6 +85,7 @@ class LCA_ADAM_time(base):
 
         self.imageShape = (self.batchSize, numTime, inputShape[1], inputShape[2], numFeatures)
         self.WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, numFeatures, self.numV)
+        pdb.set_trace()
 
         if(numTime == 1):
             self.VShape = (self.batchSize, 1, V_Y, V_X, self.numV)
@@ -205,19 +210,18 @@ class LCA_ADAM_time(base):
         if(self.stereo):
             np_weights_reshape = np.reshape(np_weights, (ntime, ny, nx, nfns/2, 2, nf))
             for s in range(2):
-                filename = prefix
                 if(s == 0):
-                    filename += "_left"
+                    suffix = "_left"
                 elif(s == 1):
-                    filename += "_right"
+                    suffix = "_right"
                 for t in range(ntime):
                     plotWeights = np_weights_reshape[t, :, :, :, s, :]
-                    plot_weights(plotWeights, filename + "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
+                    plot_weights(plotWeights, prefix, suffix + "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
         else:
             filename = prefix
             for t in range(ntime):
                 plotWeights = np_weights[t, :, :, :, :]
-                plot_weights(plotWeights, filename + "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
+                plot_weights(plotWeights, prefix, "_time" + str(t), [3, 0, 1, 2], np_v1, plotInd = self.plotInd)
 
     def evalAndPlotRecons(self, feedDict, prefix):
         print "Plotting recons"
@@ -294,10 +298,10 @@ class LCA_ADAM_time(base):
 
             #plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
             suffix = "/train_" + str(self.timestep)
+            self.evalAndPlotRecons(feedDict, self.reconDir + suffix)
             if(self.plotFM):
                 self.evalAndPlotFeaturemaps(feedDict, self.featureMapDir + suffix)
             self.evalAndPlotWeights(feedDict, self.weightDir + suffix)
-            self.evalAndPlotRecons(feedDict, self.reconDir + suffix)
 
 
         #Update weights
@@ -373,7 +377,9 @@ class LCA_ADAM_time(base):
                 data = {"values":v1Sparse, "time":time}
                 pvpFileList[t].write(data, shape=(ny, nx, numN))
 
-            self.currImg = self.dataObj.getData(self.batchSize)[0]
+            data = self.dataObj.getData(self.batchSize)
+            self.currImg = data[0]
+
         for t in range(numTime):
             pvpFileList[t].close()
 

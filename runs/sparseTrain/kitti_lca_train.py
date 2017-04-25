@@ -56,7 +56,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_kitti/",
+    'runDir':          "/lca_adam_kitti_test/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -95,6 +95,8 @@ params = {
     'patchSizeY':      15,
     'patchSizeX':      32,
     'stereo':          True,
+    'plotInd':         False,
+    'plotFM':          False,
 }
 
 #Allocate tensorflow object

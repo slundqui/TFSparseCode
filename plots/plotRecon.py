@@ -14,11 +14,21 @@ def plotRecon(recon_matrix, img_matrix, outPrefix, r=None):
         r_recon = (recon-recon.min())/(recon.max()-recon.min())
         img = img_matrix[b, :, :, :]
         r_img = (img-img.min())/(img.max()-img.min())
+
         f, axarr = plt.subplots(2, 1)
+
         axarr[0].imshow(r_img)
         axarr[0].set_title("orig")
+        axarr[0].xaxis.set_visible(False)
+        axarr[0].yaxis.set_visible(False)
+
         axarr[1].imshow(r_recon)
         axarr[1].set_title("recon")
+        axarr[1].xaxis.set_visible(False)
+        axarr[1].yaxis.set_visible(False)
+
+        f.tight_layout(h_pad=.01)
+
         plt.savefig(outPrefix+"_"+str(b)+".png")
         plt.close(f)
 

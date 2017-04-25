@@ -20,11 +20,11 @@ def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4], v1Rank=N
         permute_weights = np.transpose(weights_matrix, order)
 
     for t in range(patch_t):
-        outFilename = outPrefix + "_frame" + str(t)
-        plot_weights(permute_weights[:, t, :, :, :], outFilename, v1Rank)
+        suffix = "_frame" + str(t)
+        plot_weights(permute_weights[:, t, :, :, :], outPrefix, suffix, v1Rank)
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
-def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, plotInd = False):
+def plot_weights(weights_matrix, outDir, suffix, order=[0, 1, 2, 3], v1Rank=None, plotInd = False):
     print "Creating plot"
     assert(weights_matrix.ndim == 4)
     num_weights = weights_matrix.shape[order[0]]
@@ -50,7 +50,7 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
         y = [rankVals[i] for i in rankIdx]
         fig = plt.figure()
         plt.bar(x, y)
-        plt.savefig(outFilename+"_v1Hist.png")
+        plt.savefig(outDir+suffix+"_v1Hist.png", bbox_inches='tight')
         plt.close(fig)
 
     subplot_x = int(np.ceil(np.sqrt(num_weights)))
@@ -64,7 +64,7 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
         rangeWeight = range(num_weights)
 
     if(plotInd):
-        indOutDir = outFilename + "_ind/"
+        indOutDir = outDir + "/ind/"
         makeDir(indOutDir)
 
     #Normalize each patch individually
@@ -91,9 +91,9 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
 
         if plotInd:
             if v1Rank is None:
-                saveStr = indOutDir + "weight_" + str(weightIdx) + ".png"
+                saveStr = indOutDir + suffix + "_weight_" + str(weightIdx) + ".png"
             else:
-                saveStr = indOutDir + "rank_" + str(weight) + "_weight_" + str(weightIdx) + ".png"
+                saveStr = indOutDir + suffix + "_rank_" + str(weight) + "_weight_" + str(weightIdx) + ".png"
             print saveStr
             spmisc.imsave(saveStr, weight_patch)
             #fig = plt.figure()
@@ -103,14 +103,11 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3], v1Rank=None, p
 
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
-    fig = plt.figure()
-    plt.imshow(outWeightMat)
-    plt.savefig(outFilename + ".png")
-    plt.close(fig)
+    spmisc.imsave(saveStr, outWeightMat)
 
     fig = plt.figure()
     plt.hist(weights_matrix.flatten(), 50)
-    plt.savefig(outFilename + "_hist.png")
+    plt.savefig(outDir + "_hist.png", bbox_inches='tight')
     plt.close(fig)
 
 
