@@ -38,10 +38,13 @@ class LCA_ADAM(base):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(LCA_ADAM, self).__init__(params, dataObj)
-        self.currImg = self.dataObj.getData(self.batchSize)
+        data = self.dataObj.getData(self.batchSize)
+        self.currImg = data[0]
+        #TODO set ground truth
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
+        #inputShape goes (y, x, f)
         assert(inputShape[0] % self.VStrideY == 0)
         assert(inputShape[1] % self.VStrideX == 0)
         V_Y = int(inputShape[0]/self.VStrideY)
@@ -116,22 +119,23 @@ class LCA_ADAM(base):
                 self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-15)
 
         #Summaries
-        self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
-        self.s_recon = tf.scalar_summary('recon error', self.reconError, name="reconError")
-        self.s_errorStd= tf.scalar_summary('errorStd', self.errorStd, name="errorStd")
-        self.s_l1= tf.scalar_summary('l1 sparsity', self.l1Sparsity, name="l1Sparsity")
-        self.s_l1_mean = tf.scalar_summary('l1 mean', self.l1_mean, name="l1Mean")
-        self.s_s_nnz = tf.scalar_summary('nnz', self.nnz, name="nnz")
+        self.s_loss = tf.summary.scalar('loss', self.loss)
+        self.s_recon = tf.summary.scalar('recon error', self.reconError)
+        self.s_errorStd= tf.summary.scalar('errorStd', self.errorStd)
+        self.s_l1= tf.summary.scalar('l1 sparsity', self.l1Sparsity)
+        self.s_l1_mean = tf.summary.scalar('l1 mean', self.l1_mean)
+        self.s_s_nnz = tf.summary.scalar('nnz', self.nnz)
 
-        self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
-        self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
-        self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
+        self.h_input = tf.summary.histogram('input', self.inputImage)
+        self.h_recon = tf.summary.histogram('recon', self.recon)
+        self.h_v1_w = tf.summary.histogram('V1_W', self.V1_W)
 
-        self.h_v1_u = tf.histogram_summary('V1_U', self.V1_U, name="V1_U")
-        self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
-        self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
+        self.h_v1_u = tf.summary.histogram('V1_U', self.V1_U)
+        self.h_v1_a = tf.summary.histogram('V1_A', self.V1_A)
+        self.h_log_v1_a = tf.summary.histogram('Log_V1_A', self.log_V1_A)
 
-        self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
+        self.h_normVals = tf.summary.histogram('normVals', self.normVals)
+
 
     def encodeImage(self, feedDict):
         for i in range(self.displayPeriod):
@@ -156,6 +160,9 @@ class LCA_ADAM(base):
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
             print("Model saved in file: %s" % save_path)
+            #Print weights
+            self.writeNpWeights(self.ckptDir + "weights_" + str(self.timestep))
+
 
     def normWeights(self):
         #Normalize weights
@@ -177,9 +184,13 @@ class LCA_ADAM(base):
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
         #New image
-        self.currImg = self.dataObj.getData(self.batchSize)
+        self.currImg = self.dataObj.getData(self.batchSize)[0]
         self.plotTimestep += 1
 
+    def getLoadVars(self):
+        v = tf.global_variables()
+        v = [var for var in v if ("Adam" not in var.name and "Adadelta" not in var.name)]
+        return v
 
     #Finds sparse encoding of inData
     #inData must be in the shape of the image
@@ -216,22 +227,9 @@ class LCA_ADAM(base):
             self.currImg = self.dataObj.getData(self.batchSize)
         pvFile.close()
 
-    def writePvpWeights(self, outputPrefix, rect=False):
+    def writeNpWeights(self, outputPrefix):
         npw = self.sess.run(self.V1_W)
-        [nyp, nxp, nfp, numK] = npw.shape
-        filename = outputPrefix + ".pvp"
-        #We need to get weights into pvp shape
-        #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-        if(rect):
-            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-        else:
-            outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
-        weightBuf = np.transpose(npw, [3, 0, 1, 2])
-        outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-        if(rect):
-            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
-        pvp = {}
-        pvp['values'] = outWeights
-        pvp['time'] = np.array([0])
-        writepvpfile(filename, pvp)
+        filename = outputPrefix + ".npy"
+        np.save(filename, npw)
+
 

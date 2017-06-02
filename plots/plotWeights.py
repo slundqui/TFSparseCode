@@ -103,11 +103,12 @@ def plot_weights(weights_matrix, outDir, suffix, order=[0, 1, 2, 3], v1Rank=None
 
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
+    saveStr = outDir + suffix + "_allweights.png"
     spmisc.imsave(saveStr, outWeightMat)
 
     fig = plt.figure()
     plt.hist(weights_matrix.flatten(), 50)
-    plt.savefig(outDir + "_hist.png", bbox_inches='tight')
+    plt.savefig(outDir + suffix + "_hist.png", bbox_inches='tight')
     plt.close(fig)
 
 

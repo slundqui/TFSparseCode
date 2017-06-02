@@ -54,9 +54,9 @@ class base(object):
 
     #Allocates and specifies the output directory for tensorboard summaries
     def writeSummary(self):
-        self.mergedSummary = tf.merge_all_summaries()
-        self.train_writer = tf.train.SummaryWriter(self.tfDir + "/train", self.sess.graph)
-        self.test_writer = tf.train.SummaryWriter(self.tfDir + "/test")
+        self.mergedSummary = tf.summary.merge_all()
+        self.train_writer = tf.summary.FileWriter(self.tfDir + "/train", self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(self.tfDir + "/test")
 
     def initialize(self):
         ##Define saver
@@ -72,11 +72,11 @@ class base(object):
            self.loadModel()
 
     def getLoadVars(self):
-        return tf.all_variables()
+        return tf.global_variables()
 
     #Initializes session.
     def initSess(self):
-        self.sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.global_variables_initializer())
 
     def closeSess(self):
         self.sess.close()

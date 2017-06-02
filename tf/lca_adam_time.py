@@ -1,7 +1,7 @@
 import pdb
 import numpy as np
 import tensorflow as tf
-from base import base
+from lca_adam import LCA_ADAM
 from plots.plotWeights import plot_weights
 from plots.plotRecon import plotRecon
 from plots.plotFeaturemaps import plotFeaturemaps
@@ -9,11 +9,7 @@ from .utils import *
 #Using pvp files for saving
 from pvtools import *
 
-class LCA_ADAM_time(base):
-    #Global timestep
-    timestep = 0
-    plotTimestep = 0
-
+class LCA_ADAM_time(LCA_ADAM):
     def makeDirs(self):
         super(LCA_ADAM_time, self).makeDirs()
         makeDir(self.reconDir)
@@ -24,16 +20,8 @@ class LCA_ADAM_time(base):
     #Sets dictionary of params to member variables
     def loadParams(self, params):
         super(LCA_ADAM_time, self).loadParams(params)
-        self.learningRateA = params['learningRateA']
-        self.learningRateW = params['learningRateW']
-        self.thresh = params['thresh']
-        self.numV = params['numV']
         self.VStrideT = params['VStrideT']
-        self.VStrideY = params['VStrideY']
-        self.VStrideX = params['VStrideX']
         self.patchSizeT = params['patchSizeT']
-        self.patchSizeY = params['patchSizeY']
-        self.patchSizeX = params['patchSizeX']
         self.stereo = params['stereo']
         self.plotInd = params['plotInd']
         self.plotFM = params['plotFM']
@@ -59,11 +47,6 @@ class LCA_ADAM_time(base):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(LCA_ADAM_time, self).__init__(params, dataObj)
-        data = self.dataObj.getData(self.batchSize)
-        self.currImg = data[0]
-
-        pdb.set_trace()
-        #TODO set ground truth
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
@@ -85,7 +68,6 @@ class LCA_ADAM_time(base):
 
         self.imageShape = (self.batchSize, numTime, inputShape[1], inputShape[2], numFeatures)
         self.WShape = (self.patchSizeT, self.patchSizeY, self.patchSizeX, numFeatures, self.numV)
-        pdb.set_trace()
 
         if(numTime == 1):
             self.VShape = (self.batchSize, 1, V_Y, V_X, self.numV)
@@ -170,22 +152,22 @@ class LCA_ADAM_time(base):
                 self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-15)
 
         #Summaries
-        self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
-        self.s_recon = tf.scalar_summary('recon error', self.reconError, name="reconError")
-        self.s_errorStd= tf.scalar_summary('errorStd', self.errorStd, name="errorStd")
-        self.s_l1= tf.scalar_summary('l1 sparsity', self.l1Sparsity, name="l1Sparsity")
-        self.s_l1_mean = tf.scalar_summary('l1 mean', self.l1_mean, name="l1Mean")
-        self.s_s_nnz = tf.scalar_summary('nnz', self.nnz, name="nnz")
+        self.s_loss = tf.summary.scalar('loss', self.loss)
+        self.s_recon = tf.summary.scalar('recon error', self.reconError)
+        self.s_errorStd= tf.summary.scalar('errorStd', self.errorStd)
+        self.s_l1= tf.summary.scalar('l1 sparsity', self.l1Sparsity)
+        self.s_l1_mean = tf.summary.scalar('l1 mean', self.l1_mean)
+        self.s_s_nnz = tf.summary.scalar('nnz', self.nnz )
 
-        self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
-        self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
-        self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
+        self.h_input = tf.summary.histogram('input', self.inputImage)
+        self.h_recon = tf.summary.histogram('recon', self.recon)
+        self.h_v1_w = tf.summary.histogram('V1_W', self.V1_W)
 
-        self.h_v1_u = tf.histogram_summary('V1_U', self.V1_U, name="V1_U")
-        self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
-        self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
+        self.h_v1_u = tf.summary.histogram('V1_U', self.V1_U)
+        self.h_v1_a = tf.summary.histogram('V1_A', self.V1_A)
+        self.h_log_v1_a = tf.summary.histogram('Log_V1_A', self.log_V1_A)
 
-        self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
+        self.h_normVals = tf.summary.histogram('normVals', self.normVals)
 
     def evalAndPlotFeaturemaps(self, feedDict, prefix):
         print "Plotting featuremaps"
@@ -251,34 +233,6 @@ class LCA_ADAM_time(base):
                 image = np_inputImage[:, t, :, :, :]
                 plotRecon(recon, image, filename + "_recon_time" + str(t) + "_batch")
 
-    def encodeImage(self, feedDict):
-        for i in range(self.displayPeriod):
-            #Run optimizer
-            #This calculates A
-            self.sess.run(self.optimizerA0, feed_dict=feedDict)
-            #This updates U based on loss function wrt A
-            self.sess.run(self.optimizerA, feed_dict=feedDict)
-            self.timestep+=1
-            if((i+1)%self.writeStep == 0):
-                summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
-                self.train_writer.add_summary(summary, self.timestep)
-            if((i+1)%self.progress == 0):
-                print "Timestep ", self.timestep
-
-    #Trains model for numSteps
-    def trainA(self, save):
-        #Define session
-        feedDict = {self.inputImage: self.currImg}
-        self.encodeImage(feedDict)
-
-        if(save):
-            save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
-            print("Model saved in file: %s" % save_path)
-
-    def normWeights(self):
-        #Normalize weights
-        self.sess.run(self.normalize_W)
-
     def trainW(self):
         feedDict = {self.inputImage: self.currImg}
 
@@ -309,24 +263,6 @@ class LCA_ADAM_time(base):
         #New image
         self.currImg = self.dataObj.getData(self.batchSize)[0]
         self.plotTimestep += 1
-
-
-    #Finds sparse encoding of inData
-    #inData must be in the shape of the image
-    #[batch, nY, nX, nF]
-    def evalData(self, inData):
-        #(nb, ny, nx, nf) = inData.shape
-        ##Check size
-        #assert(nb == self.batchSize)
-        #assert(ny == self.inputShape[0])
-        #assert(nx == self.inputShape[1])
-        #assert(nf == self.inputShape[2])
-
-        feedDict = {self.inputImage: inData}
-        self.encodeImage(feedDict)
-        #Get thresholded v1 as an output
-        outVals = self.V1_A.eval(session=self.sess)
-        return outVals
 
     def evalSet(self, evalDataObj, outPrefix):
         numImages = evalDataObj.numImages
