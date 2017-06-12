@@ -10,15 +10,16 @@ import pdb
 #testImageLists = "/home/slundquist/mountData/datasets/cifar/images/test.txt"
 randImageSeed = None
 
-filename = "/home/sheng/mountData/seismic/seismic.txt"
-exampleSize = 100
+filename = "/home/slundquist/mountData/datasets/seismic/wf.txt"
+settingsFilename = "/media/data/jamal/p4681/p4681ac/p4681_run1_AE.mat"
+exampleSize = 10000
 #Get object from which tensorflow will pull data from
-trainDataObj = seismicData(filename, exampleSize)
+trainDataObj = seismicData(filename, settingsFilename, exampleSize, shuffle=True)
 
 #FISTA params
 params = {
     #Base output directory
-    'outDir':          "/home/sheng/mountData/tfSparseCode/",
+    'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
     'runDir':          "/lca_adam_seismic/",
     'tfDir':           "/tfout",
@@ -32,30 +33,30 @@ params = {
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       100,
+    'writeStep':       50,
     #Flag for loading weights from checkpoint
-    'load':            True,
-    'loadFile':        "/home/sheng/mountData/tfSparseCode/saved/seismic.ckpt",
+    'load':            False,
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/saved/seismic.ckpt",
     #Device to run on
     'device':          '/gpu:0',
     #####FISTA PARAMS######
-    'numIterations':   10000,
+    'numIterations':   10,
     'displayPeriod':   1000,
     #Batch size
-    'batchSize':       128,
+    'batchSize':       8,
     #Learning rate for optimizer
     'learningRateA':   5e-3,
     'learningRateW':   .1,
     #Lambda in energy function
     'thresh':          .01,
     #Number of features in V1
-    'numV':            64,
+    'numV':            128,
     #Stride of V1
-    'VStrideY':        1,
+   'VStrideY':        1,
     'VStrideX':        1,
     #Patch size
     'patchSizeY':      1,
-    'patchSizeX':      15,
+    'patchSizeX':      128,
 }
 
 #Allocate tensorflow object

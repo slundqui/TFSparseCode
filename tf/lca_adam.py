@@ -2,7 +2,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 from base import base
-from plots.plotWeights import plot_weights
+from plots.plotWeights import plot_weights, plot_1d_weights
 from plots.plotRecon import plotRecon
 from .utils import *
 #Using pvp files for saving
@@ -34,7 +34,7 @@ class LCA_ADAM(base):
            #Train
            self.trainW()
            self.normWeights()
-           #This function is responsible for determining when to plot per iteration
+          #This function is responsible for determining when to plot per iteration
            self.plot()
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
@@ -128,21 +128,20 @@ class LCA_ADAM(base):
                 self.log_V1_A = tf.log(tf.abs(self.V1_A)+1e-13)
 
         #Summaries
-        self.s_loss = tf.scalar_summary('loss', self.loss, name="lossSum")
-        self.s_recon = tf.scalar_summary('recon error', self.reconError, name="reconError")
-        self.s_errorStd= tf.scalar_summary('errorStd', self.errorStd, name="errorStd")
-        self.s_l1= tf.scalar_summary('l1 sparsity', self.l1Sparsity, name="l1Sparsity")
-        self.s_l1_mean = tf.scalar_summary('l1 mean', self.l1_mean, name="l1Mean")
-        self.s_s_nnz = tf.scalar_summary('nnz', self.nnz, name="nnz")
+        self.s_loss    = tf.summary.scalar('loss', self.loss)
+        self.s_recon   = tf.summary.scalar('recon error', self.reconError)
+        self.s_errorStd= tf.summary.scalar('errorStd', self.errorStd)
+        self.s_l1      = tf.summary.scalar('l1_sparsity', self.l1Sparsity)
+        self.s_l1_mean = tf.summary.scalar('l1_mean', self.l1_mean)
+        self.s_s_nnz   = tf.summary.scalar('nnz', self.nnz)
 
-        self.h_input = tf.histogram_summary('input', self.inputImage, name="input")
-        self.h_input = tf.histogram_summary('scale_input', self.scaled_inputImage, name="scale_input")
-        self.h_recon = tf.histogram_summary('recon', self.recon, name="recon")
-        self.h_v1_w = tf.histogram_summary('V1_W', self.V1_W, name="V1_W")
-
-        self.h_v1_u = tf.histogram_summary('V1_U', self.V1_U, name="V1_U")
-        self.h_v1_a = tf.histogram_summary('V1_A', self.V1_A, name="V1_A")
-        self.h_log_v1_a = tf.histogram_summary('Log_V1_A', self.log_V1_A, name="Log_V1_A")
+        self.h_input    = tf.summary.histogram('input', self.inputImage)
+        self.h_input    = tf.summary.histogram('scale_input', self.scaled_inputImage)
+        self.h_recon    = tf.summary.histogram('recon', self.recon)
+        self.h_v1_w     = tf.summary.histogram('V1_W', self.V1_W)
+        self.h_v1_u     = tf.summary.histogram('V1_U', self.V1_U)
+        self.h_v1_a     = tf.summary.histogram('V1_A', self.V1_A)
+        self.h_log_v1_a = tf.summary.histogram('Log_V1_A', self.log_V1_A)
 
         #self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
@@ -188,13 +187,13 @@ class LCA_ADAM(base):
             #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
 
             plotStr = self.plotDir + "dict_"+str(self.timestep)
-            if(np_V1_W.ndim == 2):
-                rescaled_V1_W = np.exp(np.abs(np_V1_W * np.sqrt(self.patchSizeX * self.patchSizeY))) * np.sign(np_V1_W)
-                plot_1d_weights(rescaled_V1_W, plotStr, activity=np_V1_A)
+            if(np_V1_W.ndim == 3):
+                plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A)
             else:
                 plot_weights(V1_W, plotStr)
 
             np_inputImage = self.currImg
+            feedDict = {self.inputImage: self.currImg}
             np_recon = self.sess.run(self.recon, feed_dict=feedDict)
 
             #Draw recons

@@ -73,10 +73,12 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
     plt.close(fig)
 
 #Order defines the order in weights_matrix for num_weights, v
-#Activity has to be in (batch, y, x, f)
-def plot_1d_weights(weights_matrix, outFilename, order=[0, 1], activity=None):
+#Activity has to be in (batch, x, f)
+def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None):
     numWeights = weights_matrix.shape[order[0]]
     patchSize = weights_matrix.shape[order[1]]
+    numf = weights_matrix.shape[order[2]]
+
     if(order == [0, 1, 2, 3]):
         permute_weights = weights_matrix
     else:
@@ -96,7 +98,7 @@ def plot_1d_weights(weights_matrix, outFilename, order=[0, 1], activity=None):
     for weight in range(numWeights):
         weightIdx = sortIdxs[weight]
         fig = plt.figure()
-        plt.plot(permute_weights[weightIdx, :])
+        plt.plot(permute_weights[weightIdx, :, :])
         plt.savefig(outFilename + "weight"+str(weight)+".png")
         plt.close(fig)
         np.savetxt(outFilename + "weight"+str(weight)+".txt", permute_weights[weightIdx, :], delimiter=",")
