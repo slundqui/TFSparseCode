@@ -64,13 +64,13 @@ class seismicData(object):
 
         #Grab a chunk from exampleSize
         if(self.exampleSize < 0):
-            outData = data
+            outData = data.astype(np.float32)
         else:
             if(self.doShuffle):
                 beg_idx = np.random.randint(0, numSamples - self.exampleSize)
             else:
                 beg_idx = 0
-            outData = data[beg_idx:beg_idx+self.exampleSize, :]
+            outData = data[beg_idx:beg_idx+self.exampleSize, :].astype(np.float32)
 
         #Normalize data
         #outData = data[beg_idx:beg_idx + self.exampleSize, :]
@@ -92,11 +92,12 @@ if __name__=="__main__":
     filename = "/home/slundquist/mountData/datasets/seismic/wf.txt"
     #Settings file
     settingsFilename = "/media/data/jamal/p4681/p4681ac/p4681_run1_AE.mat"
-    #How many timesteps to store as one exmple
+    #Output directory
     outDir = "/media/data/slundquist/seismicpvp/"
+
     if not os.path.exists(outDir):
         os.makedirs(outDir)
-
+    #How many timesteps to store as one exmple
     #-1 means all data
     exampleSize = -1
     obj = seismicData(filename, settingsFilename, exampleSize, shuffle=False)
