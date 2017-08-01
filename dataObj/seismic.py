@@ -73,8 +73,8 @@ class seismicData(object):
             outData = data[beg_idx:beg_idx+self.exampleSize, :].astype(np.float32)
 
         #Normalize data
-        #outData = data[beg_idx:beg_idx + self.exampleSize, :]
-        #outData = outData.astype(np.float32)/500
+        outData = data[beg_idx:beg_idx + self.exampleSize, :]
+        outData = outData.astype(np.float32)/100
 
         return outData
 

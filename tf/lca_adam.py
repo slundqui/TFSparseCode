@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from base import base
 from plots.plotWeights import plot_weights, plot_1d_weights
-from plots.plotRecon import plotRecon
+from plots.plotRecon import plotRecon1d, plotRecon
 from .utils import *
 #Using pvp files for saving
 import pvtools as pv
@@ -194,17 +194,12 @@ class LCA_ADAM(base):
 
             np_inputImage = self.currImg
             feedDict = {self.inputImage: self.currImg}
-            np_recon = self.sess.run(self.recon, feed_dict=feedDict)
+            np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
 
             #Draw recons
-            if(np.squeeze(np_recon).ndim == 2):
-                rescaled_inputImage = np_inputImage * np.sqrt(self.patchSizeX * self.patchSizeY)
-                rescaled_recon = np_recon * np.sqrt(self.patchSizeX * self.patchSizeY)
-
-                exp_inputImage = np.squeeze(np.exp(np.abs(rescaled_inputImage) - 1e-10) * np.sign(np_inputImage))
-                exp_recon = np.squeeze(np.exp(np.abs(rescaled_recon) - 1e-10) * np.sign(np_recon))
-
-                plotRecon1d(exp_recon, exp_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+            if(np_recon.ndim == 3):
+                rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
+                plotRecon1d(np_recon, rescaled_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
             else:
                 plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
 
