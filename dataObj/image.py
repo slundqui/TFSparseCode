@@ -59,10 +59,10 @@ class dataObj(object):
             pass
         elif(self.resizeMethod=="max"):
             #self.inputShape=(self.maxDim, self.maxDim, 3)
-            print "Resize method max Not implemented"
+            print("Resize method max Not implemented")
             assert(0)
         else:
-            print "Method ", resizeMethod, "not supported"
+            print("Method ", resizeMethod, "not supported")
             assert(0)
 
     ##Explicitly sets the mean and standard deviation for normalization
@@ -147,7 +147,7 @@ class dataObj(object):
             padRight = self.inputShape[1]-(padLeft+nx)
             outImage = np.pad(inImage, ((padTop, padBot), (padLeft, padRight), (0, 0)), 'constant')
         else:
-            print "Method ", resizeMethod, "not supported"
+            print("Method ", resizeMethod, "not supported")
             assert(0)
         return outImage
 
@@ -184,7 +184,7 @@ class dataObj(object):
         self.imgIdx = self.imgIdx + self.skip
 
         if(self.imgIdx >= self.numData):
-            print "Rewinding"
+            print("Rewinding")
             self.imgIdx = 0
             if(self.doShuffle):
                 random.shuffle(self.shuffleIdx)

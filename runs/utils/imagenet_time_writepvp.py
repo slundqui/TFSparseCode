@@ -66,9 +66,9 @@ params = {
 #This will build the graph
 tfObj = ISTA_Time(params, trainDataObj)
 
-print "Done init"
+print("Done init")
 tfObj.writePvpWeights(outPvpPrefix)
 
-print "Done run"
+print("Done run")
 tfObj.closeSess()
 

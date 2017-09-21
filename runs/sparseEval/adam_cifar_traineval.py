@@ -59,10 +59,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = AdamSP(params, trainDataObj)
-print "Done init"
+print("Done init")
 outFilename = params["outDir"] + params["runDir"] + "train_adam_cifar_256_eval.pvp"
 tfObj.evalSet(trainDataObj, outFilename)
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

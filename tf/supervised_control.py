@@ -40,7 +40,7 @@ class Supervised(base):
                #Evaluate test frame, providing gt so that it writes to summary
                (evalData, gtData) = testDataObj.getData(numTest)
                self.evalModel(evalData, gtData, plot=plot)
-               print "Done test eval"
+               print("Done test eval")
            #Train
            if(i%self.savePeriod == 0):
                self.trainModel(trainDataObj, save=True, plot=plot)
@@ -143,7 +143,7 @@ class Supervised(base):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if(i%self.progress == 0):
-                print "Timestep ", self.timestep
+                print("Timestep ", self.timestep)
             self.timestep+=1
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)

@@ -84,7 +84,7 @@ def conv3d(x, w, inName):
 #Transposes data to permute strides to the output feature dimension
 def transpose5dData(x, xShape, strideT, strideY, strideX):
     [nb, nt, ny, nx, nf] = xShape
-    print "Building output indices for conv3d"
+    print("Building output indices for conv3d")
     #Build gather indices for output
     #Must be in shape of target output data
     dataIdxs = np.zeros((nb, nt/strideT, ny/strideY, nx/strideX, nf*strideT*strideY*strideX, 5)).astype(np.int32)
@@ -107,7 +107,7 @@ def transpose5dData(x, xShape, strideT, strideY, strideX):
 def undoTranspose5dData(x, xShape, strideT, strideY, strideX):
     #These shapes are in terms of the orig image
     [nb, nt, ny, nx, nf] = xShape
-    print "Building output indices for conv3d"
+    print("Building output indices for conv3d")
     #Build gather indices for output
     #Must be in shape of target output data
     dataIdxs = np.zeros((nb, nt, ny, nx, nf, 5)).astype(np.int32)
@@ -128,7 +128,7 @@ def undoTranspose5dData(x, xShape, strideT, strideY, strideX):
 
 #Transposes weight data for viewing
 def transpose5dWeight(w, wShape, strideT, strideY, strideX):
-    print "Building weight indices for conv3d"
+    print("Building weight indices for conv3d")
     #These shapes are in terms of the already strided values
     [ntp, nyp, nxp, nifp, nofp] = wShape
     #Translate to target output shape
@@ -176,7 +176,7 @@ def conv3d_oneToMany(x, xShape, w, wShape, strideT, strideY, strideX, inName):
 
     assert(nifp == nf)
 
-    print "Building weight indices for conv3d"
+    print("Building weight indices for conv3d")
     #Build gather indices for weights
     #Must be in shape of target output weights
     weightIdxs = np.zeros((int(ntp/strideT), int(nyp/strideY), int(nxp/strideX), nifp, nofp*strideT*strideX*strideY, 5)).astype(np.int32)
@@ -198,7 +198,7 @@ def conv3d_oneToMany(x, xShape, w, wShape, strideT, strideY, strideX, inName):
                         weightIdxs[otp, oyp, oxp, oifp, oofp, :] = [itp, iyp, ixp, iifp, iofp]
 
 
-    print "Building output indices for conv3d"
+    print("Building output indices for conv3d")
     #Build gather indices for output
     #Must be in shape of target output data
     dataIdxs = np.zeros((nb, nt*strideT, ny*strideY, nx*strideX, nofp, 5)).astype(np.int32)

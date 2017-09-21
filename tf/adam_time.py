@@ -194,7 +194,7 @@ class AdamTimeSp(base):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if((i+1)%self.progress == 0):
-                print "Timestep ", self.timestep
+                print("Timestep ", self.timestep)
 
         if(save):
             save_path = self.saver.save(self.sess, self.saveFile, global_step=self.timestep, write_meta_graph=False)
@@ -242,7 +242,7 @@ class AdamTimeSp(base):
         for i in range(self.displayPeriod):
             self.sess.run(self.optimizerA, feed_dict=feedDict)
             if((i+1)%self.progress == 0):
-                print "Timestep ", str(i) , " out of ", str(self.displayPeriod)
+                print("Timestep ", str(i) , " out of ", str(self.displayPeriod))
         #Get thresholded v1 as an output
         outVals = self.t_V1_A.eval(session=self.sess)
         return outVals
@@ -254,7 +254,7 @@ class AdamTimeSp(base):
         assert(self.batchSize == 1)
         #Open h5py file
         for it in range(numIterations):
-            print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
+            print(str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")")
             #Evaluate
             npV1_A = self.evalData(evalDataObj.getData(self.batchSize, self.nT), displayPeriod=displayPeriod)
             v1Sparse = convertToSparse5d(npV1_A)

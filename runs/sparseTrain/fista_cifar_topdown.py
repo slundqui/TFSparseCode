@@ -68,10 +68,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = FISTATopDown(params, trainDataObj)
-print "Done init"
+print("Done init")
 
 tfObj.runModel()
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

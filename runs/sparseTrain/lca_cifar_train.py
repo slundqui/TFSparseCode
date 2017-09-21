@@ -58,10 +58,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = LCA(params, trainDataObj)
-print "Done init"
+print("Done init")
 
 tfObj.runModel()
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

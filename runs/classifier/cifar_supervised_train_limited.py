@@ -65,9 +65,9 @@ params = {
 #This will build the graph
 tfObj = Supervised(params, trainDataObj)
 
-print "Done init"
+print("Done init")
 tfObj.runModel(trainDataObj, testDataObj = testDataObj, numTest=256)
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

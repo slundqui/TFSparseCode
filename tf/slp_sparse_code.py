@@ -79,7 +79,7 @@ class SLP:
 
                (evalData, gtData) = testDataObj.getData(numTest)
                self.evalModel(evalData, gtData, plot=plot)
-               print "Done test eval"
+               print("Done test eval")
            #Train
            if(i%self.savePeriod == 0):
                self.trainModel(trainDataObj, save=True, plot=plot)
@@ -94,7 +94,7 @@ class SLP:
             if(self.pvpWeightFile):
                 npWeights = load_pvp_weights(self.pvpWeightFile)
             else:
-                print "Must load from weights"
+                print("Must load from weights")
                 assert(0)
 
         #Running on GPU
@@ -209,13 +209,13 @@ class SLP:
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if(i%self.progress == 0):
-                print "Timestep ", self.timestep
+                print("Timestep ", self.timestep)
             self.timestep+=1
 
             if(self.verifyTrain):
                 recons = self.sess.run(self.recon, feed_dict=feedDict)
                 for b in range(self.batchSize):
-                    print "class: ", data[1][b, :]
+                    print("class: ", data[1][b, :])
                     s_recon = recons[b, :, :, :]
                     s_recon = (s_recon-s_recon.min())/(s_recon.max()-s_recon.min())
                     plt.imshow(s_recon)
@@ -248,7 +248,7 @@ class SLP:
         if(self.verifyTest):
             recons = self.sess.run(self.recon, feed_dict=feedDict)
             for b in range(self.batchSize):
-                print "class: ", inGt[b, :]
+                print("class: ", inGt[b, :])
                 s_recon = recons[b, :, :, :]
                 s_recon = (s_recon-s_recon.min())/(s_recon.max()-s_recon.min())
                 plt.imshow(s_recon)

@@ -62,10 +62,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = ISTA(params, trainDataObj)
-print "Done init"
+print("Done init")
 
 tfObj.writePvpWeights(outPvpPrefix, rect=False)
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

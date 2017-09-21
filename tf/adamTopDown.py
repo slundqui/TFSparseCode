@@ -255,7 +255,7 @@ class AdamTopDown(base):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if((i+1)%self.progress == 0):
-                print "Timestep ", self.timestep
+                print("Timestep ", self.timestep)
 
     #Trains model for numSteps
     def trainA(self, save):
@@ -325,7 +325,7 @@ class AdamTopDown(base):
 
         pvFile = pvpOpen(outFilename, 'w')
         for it in range(numIterations):
-            print str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")"
+            print(str((float(it)*100)/numIterations) + "% done (" + str(it) + " out of " + str(numIterations) + ")")
             #Evaluate
             npV1_A = self.evalData(self.currImg, displayPeriod=displayPeriod)
             pdb.set_trace()

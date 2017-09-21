@@ -164,7 +164,7 @@ class AdamSP(base):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if((i+1)%self.progress == 0):
-                print "Timestep ", self.timestep
+                print("Timestep ", self.timestep)
 
     #Trains model for numSteps
     def trainA(self, save):

@@ -59,7 +59,7 @@ params = {
     'maxPool':         True, #Controls max or avg pool
 }
 
-print "Done init"
+print("Done init")
 est = np.zeros((testDataObj.numImages))
 gt = np.zeros((testDataObj.numImages))
 
@@ -70,7 +70,7 @@ tfObj = Supervised(params, trainDataObj.inputShape)
 assert(testDataObj.numImages % params["batchSize"] == 0)
 
 for i in range(testDataObj.numImages/params["batchSize"]):
-    print i*params["batchSize"], "out of", testDataObj.numImages
+    print(i*params["batchSize"], "out of", testDataObj.numImages)
     (inImage, inGt) = testDataObj.getData(params["batchSize"])
     outVals = tfObj.evalModel(inImage, inGt = inGt, plot=False)
     tfObj.timestep += 1
@@ -81,10 +81,10 @@ for i in range(testDataObj.numImages/params["batchSize"]):
     est[startIdx:endIdx] = v
     gt[startIdx:endIdx] = inGt
 
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 
 numCorrect = len(np.nonzero(est == gt)[0])
-print "Accuracy: ", float(numCorrect)/testDataObj.numImages
+print("Accuracy: ", float(numCorrect)/testDataObj.numImages)
 

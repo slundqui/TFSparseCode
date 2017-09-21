@@ -11,7 +11,7 @@ import pdb
 randImageSeed = None
 
 filename = "/home/slundquist/mountData/datasets/seismic/wf.txt"
-settingsFilename = "/media/data/jamal/p4681/p4681ac/p4681_run1_AE.mat"
+settingsFilename = "/home/slundquist/mountData/datasets/seismic/p4681_run1_AE.mat"
 exampleSize = 10000
 #Get object from which tensorflow will pull data from
 trainDataObj = seismicData(filename, settingsFilename, exampleSize, shuffle=True)
@@ -61,10 +61,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = LCA_ADAM(params, trainDataObj)
-print "Done init"
+print("Done init")
 
 tfObj.runModel()
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

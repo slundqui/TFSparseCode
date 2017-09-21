@@ -23,7 +23,7 @@ def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4]):
 
 #Order defines the order in weights_matrix for num_weights, y, x, f
 def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
-    print "Creating plot"
+    print("Creating plot")
     assert(weights_matrix.ndim == 4)
     num_weights = weights_matrix.shape[order[0]]
     patch_y = weights_matrix.shape[order[1]]

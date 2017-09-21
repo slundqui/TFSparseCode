@@ -64,7 +64,7 @@ params = {
 #This will build the graph
 tfObj = ISTA_Time(params, trainDataObj)
 
-print "Done init"
+print("Done init")
 tfObj.evalSet(trainDataObj, "/home/slundquist/mountData/tfLCA/imagenetTime_eval/train_data/imagenet_time_")
 
 tfObj.closeSess()

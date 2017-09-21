@@ -61,10 +61,10 @@ params = {
 
 #Allocate tensorflow object
 tfObj = AdamTopDown(params, trainDataObj)
-print "Done init"
+print("Done init")
 
 tfObj.runModel()
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 

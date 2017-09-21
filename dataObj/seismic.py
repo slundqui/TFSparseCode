@@ -21,7 +21,7 @@ class seismicData(object):
         #TODO fix to allow for multiple streams
         self.exampleSize = exampleSize
         settings = loadmat(settingsFn)
-        self.numFrames = settings['numFrames'][0,0]/2
+        self.numFrames = int(settings['numFrames'][0,0]/2)
         self.numChannels = settings['channels2save'].size
         self.inputShape = [1, exampleSize, self.numChannels]
         #Read list of filenames and store into member variable
@@ -41,13 +41,13 @@ class seismicData(object):
         #Only take files that are >= exampleSize
         while(numSamples < self.exampleSize):
             if(sampleAgain):
-                print "Skipping file", self.current_filename, "as it only contains", numSamples, "samples in the file"
+                print("Skipping file", self.current_filename, "as it only contains", numSamples, "samples in the file")
             self.current_filename = self.fnList[self.shuffleFnIdx[self.fnIdx]]
             #filename = "/media/data/jamal/p4681/p4681ac/run1/WF_100.ac"
             self.fnIdx += 1
             if(self.fnIdx >= len(self.fnList)):
                 self.fnIdx = 0
-                print "Rewiding"
+                print("Rewinding")
 
             #Load file
             data = np.fromfile(self.current_filename, dtype=np.int16)
@@ -73,7 +73,7 @@ class seismicData(object):
             outData = data[beg_idx:beg_idx+self.exampleSize, :].astype(np.float32)
 
         #Normalize data
-        outData = data[beg_idx:beg_idx + self.exampleSize, :]
+        #outData = data[beg_idx:beg_idx + self.exampleSize, :]
         outData = outData.astype(np.float32)/100
 
         return outData
@@ -91,9 +91,9 @@ if __name__=="__main__":
     #List of filenames
     filename = "/home/slundquist/mountData/datasets/seismic/wf.txt"
     #Settings file
-    settingsFilename = "/media/data/jamal/p4681/p4681ac/p4681_run1_AE.mat"
+    settingsFilename = "/home/slundquist/mountData/datasets/seismic/p4681_run1_AE.mat"
     #Output directory
-    outDir = "/media/data/slundquist/seismicpvp/"
+    outDir = "/home/slundquist/mountData/datasets/seismicpvp/"
 
     if not os.path.exists(outDir):
         os.makedirs(outDir)

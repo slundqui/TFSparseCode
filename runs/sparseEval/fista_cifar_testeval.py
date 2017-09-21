@@ -60,11 +60,11 @@ params = {
 
 #Allocate tensorflow object
 tfObj = FISTA(params, testDataObj)
-print "Done init"
+print("Done init")
 outFilename = params["outDir"] + params["runDir"] + "fista_test_cifar_256_eval.pvp"
 
 tfObj.evalSet(testDataObj, outFilename)
-print "Done run"
+print("Done run")
 
 tfObj.closeSess()
 
