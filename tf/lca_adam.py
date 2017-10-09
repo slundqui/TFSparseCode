@@ -1,10 +1,11 @@
 import pdb
 import numpy as np
 import tensorflow as tf
-from base import base
+from tf.base import base
 from plots.plotWeights import plot_weights, plot_1d_weights
 from plots.plotRecon import plotRecon1d, plotRecon
 from .utils import *
+import os
 #Using pvp files for saving
 import pvtools as pv
 
@@ -75,6 +76,7 @@ class LCA_ADAM(base):
                 self.normalize_W = self.V1_W.assign(self.V1_W/(self.normVals + 1e-8))
 
             with tf.name_scope("LCA_ADAM"):
+                self.V1_init = tf.random_uniform(self.VShape, 0, 1.25*self.thresh, dtype=tf.float32)
                 self.V1_U = uniform_weight_variable(self.VShape, "V1_U", 0.0, 1.25*self.thresh)
                 self.V1_A = weight_variable(self.VShape, "V1_A", 1e-3)
 
@@ -99,6 +101,7 @@ class LCA_ADAM(base):
             with tf.name_scope("Opt"):
                 #Calculate A from U
                 self.optimizerA0 = self.V1_A.assign(tf.nn.relu(self.V1_U - self.thresh))
+                self.v1Reset = self.V1_U.assign(self.V1_init)
 
                 self.optimizerA1 = tf.train.AdamOptimizer(self.learningRateA)
 
@@ -147,6 +150,8 @@ class LCA_ADAM(base):
 
     def encodeImage(self, feedDict):
         try:
+            #Reset u
+            self.sess.run(self.v1Reset)
             for i in range(self.displayPeriod):
                 #Run optimizer
                 #This calculates A
@@ -181,12 +186,17 @@ class LCA_ADAM(base):
     def plot(self):
         #Visualization
         if (self.plotTimestep % self.plotPeriod == 0):
+            #Make directory for timestep
+            outPlotDir = self.plotDir+"/"+str(self.timestep)+"/"
+            if not os.path.exists(outPlotDir):
+               os.makedirs(outPlotDir)
+
             np_V1_W = self.sess.run(self.weightImages)
             np_V1_A = self.sess.run(self.V1_A)
 
             #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
 
-            plotStr = self.plotDir + "dict_"+str(self.timestep)
+            plotStr = outPlotDir + "dict_"
             if(np_V1_W.ndim == 3):
                 plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A)
             else:
@@ -197,11 +207,13 @@ class LCA_ADAM(base):
             np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
 
             #Draw recons
+            plotStr = outPlotDir + "recon_"
             if(np_recon.ndim == 3):
                 rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
-                plotRecon1d(np_recon, rescaled_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+                numRecon = np.minimum(self.batchSize, 4)
+                plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon))
             else:
-                plotRecon(np_recon, np_inputImage, self.plotDir+"recon_"+str(self.timestep), r=range(4))
+                plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
 
         self.plotTimestep += 1
     def trainW(self):

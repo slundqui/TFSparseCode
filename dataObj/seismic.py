@@ -29,7 +29,7 @@ class seismicData(object):
         self.numFiles = len(self.fnList)
         #Shuffle files
         self.doShuffle = shuffle
-        self.shuffleFnIdx = range(len(self.fnList))
+        self.shuffleFnIdx = list(range(len(self.fnList)))
         self.fnIdx = 0
 
         if(self.doShuffle):
