@@ -21,6 +21,7 @@ class LCA_ADAM(base):
         self.VStrideX = params['VStrideX']
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
+        self.inputMult = params['inputMult']
 
     def runModel(self):
         #Normalize weights to start
@@ -35,8 +36,8 @@ class LCA_ADAM(base):
            #Train
            self.trainW()
            self.normWeights()
-          #This function is responsible for determining when to plot per iteration
-           self.plot()
+           #This function is responsible for determining when to plot per iteration
+           #self.plot()
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
@@ -65,6 +66,7 @@ class LCA_ADAM(base):
                 #self.scaled_inputImage = self.scaled_inputImage/np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2])
                 #Scale inputImage
                 self.scaled_inputImage = self.inputImage/(np.sqrt(self.patchSizeX*self.patchSizeY*inputShape[2]))
+                self.scaled_inputImage = self.scaled_inputImage * self.inputMult
                 #self.checked_inputImage = tf.check_numerics(self.scaled_inputImage, "scaled_input error", name=None)
 
             with tf.name_scope("Dictionary"):
@@ -159,11 +161,15 @@ class LCA_ADAM(base):
                 #This updates U based on loss function wrt A
                 self.sess.run(self.optimizerA, feed_dict=feedDict)
                 self.timestep+=1
-                if((i+1)%self.writeStep == 0):
+                if(self.timestep%self.writeStep == 0):
                     summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                     self.train_writer.add_summary(summary, self.timestep)
-                if((i+1)%self.progress == 0):
+                if(self.timestep%self.progress == 0):
                     print("Timestep ", self.timestep)
+                if(self.timestep%self.plotReconPeriod == 0):
+                    self.plotRecon()
+                if(self.timestep%self.plotWeightPeriod == 0):
+                    self.plotWeight()
         except:
             print("Error")
             pdb.set_trace()
@@ -182,40 +188,45 @@ class LCA_ADAM(base):
         #Normalize weights
         self.sess.run(self.normalize_W)
 
-
-    def plot(self):
+    def plotRecon(self):
         #Visualization
-        if (self.plotTimestep % self.plotPeriod == 0):
-            #Make directory for timestep
-            outPlotDir = self.plotDir+"/"+str(self.timestep)+"/"
-            if not os.path.exists(outPlotDir):
-               os.makedirs(outPlotDir)
+        #if (self.plotTimestep % self.plotPeriod == 0):
 
-            np_V1_W = self.sess.run(self.weightImages)
-            np_V1_A = self.sess.run(self.V1_A)
+        #Make directory for timestep
+        outPlotDir = self.plotDir+"/"+str(self.timestep)+"/"
+        if not os.path.exists(outPlotDir):
+           os.makedirs(outPlotDir)
 
-            #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+        np_inputImage = self.currImg
+        feedDict = {self.inputImage: self.currImg}
+        np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
 
-            plotStr = outPlotDir + "dict_"
-            if(np_V1_W.ndim == 3):
-                plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A)
-            else:
-                plot_weights(V1_W, plotStr)
+        #Draw recons
+        plotStr = outPlotDir + "recon_"
+        if(np_recon.ndim == 3):
+            rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
+            numRecon = np.minimum(self.batchSize, 4)
+            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon))
+        else:
+            plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
 
-            np_inputImage = self.currImg
-            feedDict = {self.inputImage: self.currImg}
-            np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
+    def plotWeight(self):
+        #Make directory for timestep
+        outPlotDir = self.plotDir+"/"+str(self.timestep)+"/"
+        if not os.path.exists(outPlotDir):
+           os.makedirs(outPlotDir)
 
-            #Draw recons
-            plotStr = outPlotDir + "recon_"
-            if(np_recon.ndim == 3):
-                rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
-                numRecon = np.minimum(self.batchSize, 4)
-                plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon))
-            else:
-                plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
+        np_V1_W = self.sess.run(self.weightImages)
+        np_V1_A = self.sess.run(self.V1_A)
 
-        self.plotTimestep += 1
+        #plot_weights(rescaled_V1_W, self.plotDir+"dict_"+str(self.timestep), activity=np_V1_A)
+
+        plotStr = outPlotDir + "dict_"
+        if(np_V1_W.ndim == 3):
+            plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A, sepFeatures=True)
+        else:
+            plot_weights(V1_W, plotStr)
+
     def trainW(self):
         feedDict = {self.inputImage: self.currImg}
         #Update weights

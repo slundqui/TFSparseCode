@@ -15,7 +15,7 @@ def readFile(filename):
 
 class seismicData(object):
     #filename is a list of filenames that contain seismic data
-    def __init__(self, filename, settingsFn, exampleSize, shuffle, seed=None):
+    def __init__(self, filename, settingsFn, exampleSize, shuffle, seed=None, scaleByChannel=False):
         if seed is not None:
             random.seed(seed)
         #TODO fix to allow for multiple streams
@@ -31,6 +31,7 @@ class seismicData(object):
         self.doShuffle = shuffle
         self.shuffleFnIdx = list(range(len(self.fnList)))
         self.fnIdx = 0
+        self.scaleByChannel = scaleByChannel
 
         if(self.doShuffle):
             random.shuffle(self.shuffleFnIdx)
@@ -74,7 +75,14 @@ class seismicData(object):
 
         #Normalize data
         #outData = data[beg_idx:beg_idx + self.exampleSize, :]
-        outData = outData.astype(np.float32)/100
+
+        if(self.scaleByChannel):
+            std = outData.std(axis=0, keepdims=True)
+        else:
+            std = outData.std()
+        outData = outData.astype(np.float32)/std
+
+        #outData = outData * .04
 
         return outData
 
