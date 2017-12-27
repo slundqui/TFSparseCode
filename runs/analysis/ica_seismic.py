@@ -21,7 +21,7 @@ numComponents = 256
 
 outDir=          "/home/slundquist/mountData/tfSparseCode/"
 #Inner run directory
-runDir=          outDir + "/icapca_seismic_ps1024_nf256_inputmult/"
+runDir=          outDir + "/icapca_seismic_ps1024_nf256_dynscale/"
 #output plots directory
 plotDir=         runDir + "plots/"
 
@@ -33,14 +33,15 @@ if not os.path.exists(plotDir):
 
 print("Building data")
 #Get object from which tensorflow will pull data from
-trainDataObj = seismicData(filename, settingsFilename, exampleSize, shuffle=True)
+trainDataObj = seismicData(filename, settingsFilename, exampleSize, shuffle=True, scaleByChannel=True)
 
 #Build data obj
 #TODO see if we can do this incrementally
 data = trainDataObj.getData(numSamples)
 
 #Match magnitude of lca
-data = data / 90.5
+#.4 / sqrt(patchsize)
+data = data * 0.004419417382
 
 print("Done")
 

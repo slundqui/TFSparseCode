@@ -4,7 +4,7 @@ import numpy as np
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 #Be sure to include OpenPV/python/pvtools in your PYTHONPATH
-from pvtools import writepvpfile
+#from pvtools import writepvpfile
 import os
 
 def readFile(filename):
@@ -116,4 +116,4 @@ if __name__=="__main__":
         #parse out filename
         fnSuffix = outFilename.split("/")[-1]
         pvpData = {"values": data, "time": np.array([0])}
-        writepvpfile(outDir+fnSuffix, pvpData)
+        #writepvpfile(outDir+fnSuffix, pvpData)
