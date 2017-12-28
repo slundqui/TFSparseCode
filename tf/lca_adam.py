@@ -22,6 +22,8 @@ class LCA_ADAM(base):
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
         self.inputMult = params['inputMult']
+        self.conv = params['conv']
+        self.fourier = params['fourier']
 
     def runModel(self):
         #Normalize weights to start
@@ -42,12 +44,22 @@ class LCA_ADAM(base):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(LCA_ADAM, self).__init__(params, dataObj)
-        self.currImg = self.dataObj.getData(self.batchSize)
+        if(self.fourier):
+            (self.currImg, self.origImg) = self.dataObj.getData(self.batchSize)
+        else:
+            self.currImg = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
         assert(inputShape[0] % self.VStrideY == 0)
         assert(inputShape[1] % self.VStrideX == 0)
+        #Overwrite patchsize and vstride here if not conv
+        if(not self.conv):
+            self.VStrideY = inputShape[0]
+            self.VStrideX = inputShape[1]
+            self.patchSizeY = inputShape[0]
+            self.patchSizeX = inputShape[1]
+
         V_Y = int(inputShape[0]/self.VStrideY)
         V_X = int(inputShape[1]/self.VStrideX)
         self.imageShape = (self.batchSize, inputShape[0], inputShape[1], inputShape[2])
@@ -86,7 +98,14 @@ class LCA_ADAM(base):
                 assert(self.VStrideY >= 1)
                 assert(self.VStrideX >= 1)
                 #We build index tensor in numpy to gather
-                self.recon = tf.nn.conv2d_transpose(self.V1_A, self.V1_W, self.imageShape, [1, self.VStrideY, self.VStrideX, 1], padding='SAME', name="recon")
+                if(self.conv):
+                    self.recon = tf.nn.conv2d_transpose(self.V1_A, self.V1_W, self.imageShape, [1, self.VStrideY, self.VStrideX, 1], padding='SAME', name="recon")
+                else:
+                    reshape_w = tf.transpose(tf.reshape(self.V1_W, [-1, self.numV]))
+                    reshape_a = tf.squeeze(self.V1_A)
+                    reshape_recon = tf.matmul(reshape_a, reshape_w)
+                    #Reshape back into image shape
+                    self.recon = tf.reshape(reshape_recon, self.imageShape)
                 #self.recon = tf.check_numerics(self.recon, 'recon error', name=None)
 
             with tf.name_scope("Error"):
@@ -151,28 +170,28 @@ class LCA_ADAM(base):
         #self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
     def encodeImage(self, feedDict):
-        try:
-            #Reset u
-            self.sess.run(self.v1Reset)
-            for i in range(self.displayPeriod):
-                #Run optimizer
-                #This calculates A
-                self.sess.run(self.optimizerA0, feed_dict=feedDict)
-                #This updates U based on loss function wrt A
-                self.sess.run(self.optimizerA, feed_dict=feedDict)
-                self.timestep+=1
-                if(self.timestep%self.writeStep == 0):
-                    summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
-                    self.train_writer.add_summary(summary, self.timestep)
-                if(self.timestep%self.progress == 0):
-                    print("Timestep ", self.timestep)
-                if(self.timestep%self.plotReconPeriod == 0):
-                    self.plotRecon()
-                if(self.timestep%self.plotWeightPeriod == 0):
-                    self.plotWeight()
-        except:
-            print("Error")
-            pdb.set_trace()
+        #try:
+        #Reset u
+        self.sess.run(self.v1Reset)
+        for i in range(self.displayPeriod):
+            #Run optimizer
+            #This calculates A
+            self.sess.run(self.optimizerA0, feed_dict=feedDict)
+            #This updates U based on loss function wrt A
+            self.sess.run(self.optimizerA, feed_dict=feedDict)
+            self.timestep+=1
+            if(self.timestep%self.writeStep == 0):
+                summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
+                self.train_writer.add_summary(summary, self.timestep)
+            if(self.timestep%self.progress == 0):
+                print("Timestep ", self.timestep)
+            if(self.timestep%self.plotReconPeriod == 0):
+                self.plotRecon()
+            if(self.timestep%self.plotWeightPeriod == 0):
+                self.plotWeight()
+        #except:
+        #    print("Error")
+        #    pdb.set_trace()
 
     #Trains model for numSteps
     def trainA(self, save):
@@ -200,13 +219,14 @@ class LCA_ADAM(base):
         np_inputImage = self.currImg
         feedDict = {self.inputImage: self.currImg}
         np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
+        np_origImg = np.squeeze(self.origImg)
 
         #Draw recons
         plotStr = outPlotDir + "recon_"
         if(np_recon.ndim == 3):
             rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
             numRecon = np.minimum(self.batchSize, 4)
-            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon))
+            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon), fourier=self.fourier, origImg=np_origImg)
         else:
             plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
 
@@ -223,7 +243,7 @@ class LCA_ADAM(base):
 
         plotStr = outPlotDir + "dict_"
         if(np_V1_W.ndim == 3):
-            plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A, sepFeatures=True)
+            plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A, sepFeatures=True, fourier=self.fourier)
         else:
             plot_weights(V1_W, plotStr)
 
@@ -232,7 +252,10 @@ class LCA_ADAM(base):
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
         #New image
-        self.currImg = self.dataObj.getData(self.batchSize)
+        if(self.fourier):
+            (self.currImg, self.origImg) = self.dataObj.getData(self.batchSize)
+        else:
+            self.currImg = self.dataObj.getData(self.batchSize)
 
 
     #Finds sparse encoding of inData

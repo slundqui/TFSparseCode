@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
+from plots.utils import tensorToComplex
 
 #Order defines the order in weights_matrix for num_weights, t, y, x, f
 def plot_weights_time(weights_matrix, outPrefix, order=[0, 1, 2, 3, 4]):
@@ -78,7 +79,8 @@ COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
 
 #Order defines the order in weights_matrix for num_weights, v
 #Activity has to be in (batch, x, f)
-def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None, sepFeatures=False):
+def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None, sepFeatures=False, fourier=False):
+
     numWeights = weights_matrix.shape[order[0]]
     patchSize = weights_matrix.shape[order[1]]
     numf = weights_matrix.shape[order[2]]
@@ -88,6 +90,12 @@ def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None,
     else:
         permute_weights = weights_matrix.copy()
         permute_weights = np.transpose(weights_matrix, order)
+
+    if(fourier):
+        permute_weights = tensorToComplex(permute_weights)
+        permute_weights = np.real(np.fft.ifft(permute_weights, axis=1))
+
+    numf = permute_weights.shape[-1]
 
     if(activity is not None):
         c_activity = activity.copy()

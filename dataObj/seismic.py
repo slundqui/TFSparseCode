@@ -36,6 +36,17 @@ class seismicData(object):
         if(self.doShuffle):
             random.shuffle(self.shuffleFnIdx)
 
+    #inputData should be [batch, y, x, f]
+    def preprocessData(self, inputData):
+        if(self.scaleByChannel):
+            std = inputData.std(axis=(1, 2), keepdims=True)
+        else:
+            std = inputData.std(axis=(1, 2, 3), keepdims=True)
+        outData = inputData.astype(np.float32)/std
+        return outData
+
+
+
     def getExample(self):
         numSamples = -np.inf
         sampleAgain = False
@@ -73,27 +84,63 @@ class seismicData(object):
                 beg_idx = 0
             outData = data[beg_idx:beg_idx+self.exampleSize, :].astype(np.float32)
 
-        #Normalize data
-        #outData = data[beg_idx:beg_idx + self.exampleSize, :]
-
-        if(self.scaleByChannel):
-            std = outData.std(axis=0, keepdims=True)
-        else:
-            std = outData.std()
-        outData = outData.astype(np.float32)/std
-
-        #outData = outData * .04
-
         return outData
 
     def getData(self, batchSize):
         if(batchSize > 1):
             assert(self.exampleSize > 0)
 
-        outData = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        outData = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.numChannels))
         for b in range(batchSize):
             outData[b, 0, :, :] = self.getExample()
+
+        #Normalize all data at once
+        outData = self.preprocessData(outData)
+
         return outData
+
+class seismicDataFourier(seismicData):
+    #Static normalization factors (based on typical std)
+    norm_std = 300.0
+    def __init__(self, filename, settingsFn, exampleSize, shuffle, seed=None, scaleByChannel=False):
+        super(seismicDataFourier, self).__init__(filename, settingsFn, exampleSize, shuffle, seed, scaleByChannel)
+        #Update inputShape
+        self.inputShape = [1, exampleSize, self.numChannels*2]
+
+    #inputData should be [batch, y, x, f]
+    #Note that we assume y is 1, and we do 1d fft over the x dimension
+    def preprocessData(self, inputData):
+        [batch, y, x, f] = inputData.shape
+        #Normalize by range
+        #data = super(seismicDataFourier, self).preprocessData(inputData)
+        #Run fourier transform
+        fdata = np.fft.fft(inputData, axis=2)
+        real_fdata = np.real(fdata)
+        im_fdata = np.imag(fdata)
+
+        #Pick static scaling factor
+        real_fdata = real_fdata/self.norm_std
+        im_fdata = im_fdata/self.norm_std
+        #Concat in new dimension and flatten into feature
+        out_fdata = np.stack([real_fdata, im_fdata], axis=-1)
+        out_fdata = np.reshape(out_fdata, [batch, y, x, f*2])
+        return out_fdata
+
+    def getData(self, batchSize):
+        if(batchSize > 1):
+            assert(self.exampleSize > 0)
+
+        outData = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.numChannels))
+        for b in range(batchSize):
+            outData[b, 0, :, :] = self.getExample()
+
+        #Normalize all data at once
+        pre_outData = self.preprocessData(outData)
+
+        return (pre_outData, outData)
+
+
+
 
 if __name__=="__main__":
     #List of filenames
@@ -107,13 +154,16 @@ if __name__=="__main__":
         os.makedirs(outDir)
     #How many timesteps to store as one exmple
     #-1 means all data
-    exampleSize = -1
-    obj = seismicData(filename, settingsFilename, exampleSize, shuffle=False)
-    for f in range(obj.numFiles):
-        data = obj.getExample()
-        data = data[np.newaxis, np.newaxis, :, :]
-        outFilename = obj.current_filename[:-3] + ".pvp"
-        #parse out filename
-        fnSuffix = outFilename.split("/")[-1]
-        pvpData = {"values": data, "time": np.array([0])}
-        #writepvpfile(outDir+fnSuffix, pvpData)
+    exampleSize = 1024
+    obj = seismicDataFourier(filename, settingsFilename, exampleSize, shuffle=False)
+    #obj = seismicData(filename, settingsFilename, exampleSize, shuffle=False)
+    data = obj.getData(5)
+    pdb.set_trace()
+    #for f in range(obj.numFiles):
+    #    data = obj.getExample()
+    #    data = data[np.newaxis, np.newaxis, :, :]
+    #    outFilename = obj.current_filename[:-3] + ".pvp"
+    #    #parse out filename
+    #    fnSuffix = outFilename.split("/")[-1]
+    #    pvpData = {"values": data, "time": np.array([0])}
+    #    #writepvpfile(outDir+fnSuffix, pvpData)
