@@ -7,7 +7,7 @@ from plots.plotRecon import plotRecon1d, plotRecon
 from .utils import *
 import os
 #Using pvp files for saving
-import pvtools as pv
+#import pvtools as pv
 
 class LCA_ADAM(base):
     #Sets dictionary of params to member variables
@@ -270,22 +270,22 @@ class LCA_ADAM(base):
             self.currImg = self.dataObj.getData(self.batchSize)
         pvFile.close()
 
-    def writePvpWeights(self, outputPrefix, rect=False):
-        npw = self.sess.run(self.V1_W)
-        [nyp, nxp, nfp, numK] = npw.shape
-        filename = outputPrefix + ".pvp"
-        #We need to get weights into pvp shape
-        #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
-        if(rect):
-            outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
-        else:
-            outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
-        weightBuf = np.transpose(npw, [3, 0, 1, 2])
-        outWeights[0, 0, 0:numK, :, :, :] = weightBuf
-        if(rect):
-            outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
-        pvp = {}
-        pvp['values'] = outWeights
-        pvp['time'] = np.array([0])
-        pv.writepvpfile(filename, pvp)
+    #def writePvpWeights(self, outputPrefix, rect=False):
+    #    npw = self.sess.run(self.V1_W)
+    #    [nyp, nxp, nfp, numK] = npw.shape
+    #    filename = outputPrefix + ".pvp"
+    #    #We need to get weights into pvp shape
+    #    #6D dense numpy array of size [numFrames, numArbors, numKernels, ny, nx, nf]
+    #    if(rect):
+    #        outWeights = np.zeros((1, 1, numK*2, nyp, nxp, nfp))
+    #    else:
+    #        outWeights = np.zeros((1, 1, numK, nyp, nxp, nfp))
+    #    weightBuf = np.transpose(npw, [3, 0, 1, 2])
+    #    outWeights[0, 0, 0:numK, :, :, :] = weightBuf
+    #    if(rect):
+    #        outWeights[0, 0, numK:2*numK, :, :, :] = weightBuf * -1
+    #    pvp = {}
+    #    pvp['values'] = outWeights
+    #    pvp['time'] = np.array([0])
+    #    pv.writepvpfile(filename, pvp)
 

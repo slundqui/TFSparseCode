@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import pdb
 from scipy import sparse
-from pvtools import readpvpfile
+#from pvtools import readpvpfile
 
 def convertToSparse5d(m):
     [nb, nt, ny, nx, nf] = m.shape
@@ -23,11 +23,11 @@ def save_sparse_csr(filename,array):
 #    return csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
 #                         shape = loader['shape'])
 
-def load_pvp_weights(filename):
-    data = readpvpfile(filename)
-    vals = data["values"]
-    outVals = vals[0, 0, :, :, :, :].transpose((1, 2, 3, 0)).astype(np.float32)
-    return outVals
+#def load_pvp_weights(filename):
+#    data = readpvpfile(filename)
+#    vals = data["values"]
+#    outVals = vals[0, 0, :, :, :, :].transpose((1, 2, 3, 0)).astype(np.float32)
+#    return outVals
 
 #Helper functions for initializing weights
 def weight_variable_fromnp(inNp, inName):
