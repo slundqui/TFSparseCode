@@ -243,7 +243,7 @@ class LCA_ADAM(base):
 
         plotStr = outPlotDir + "dict_"
         if(np_V1_W.ndim == 3):
-            plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A, sepFeatures=True, fourier=self.fourier)
+            plot_1d_weights(np_V1_W, plotStr, activity=np_V1_A, sepFeatures=True, fourier=self.fourier, numPlotWeights=100)
         else:
             plot_weights(V1_W, plotStr)
 

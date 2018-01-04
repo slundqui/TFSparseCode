@@ -79,9 +79,11 @@ COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
 
 #Order defines the order in weights_matrix for num_weights, v
 #Activity has to be in (batch, x, f)
-def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None, sepFeatures=False, fourier=False):
+def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None, sepFeatures=False, fourier=False, numPlotWeights=100):
 
     numWeights = weights_matrix.shape[order[0]]
+    if(numWeights > numPlotWeights):
+        numWeights = numPlotWeights
     patchSize = weights_matrix.shape[order[1]]
     numf = weights_matrix.shape[order[2]]
 

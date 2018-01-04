@@ -101,7 +101,7 @@ class seismicData(object):
 
 class seismicDataFourier(seismicData):
     #Static normalization factors (based on typical std)
-    norm_std = 300.0
+    norm_std = 100.0
     def __init__(self, filename, settingsFn, exampleSize, shuffle, seed=None, scaleByChannel=False):
         super(seismicDataFourier, self).__init__(filename, settingsFn, exampleSize, shuffle, seed, scaleByChannel)
         #Update inputShape

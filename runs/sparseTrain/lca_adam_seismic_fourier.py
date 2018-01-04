@@ -12,7 +12,7 @@ randImageSeed = None
 
 filename = "/home/slundquist/mountData/datasets/seismic/wf.txt"
 settingsFilename = "/home/slundquist/mountData/datasets/seismic/p4681_run1_AE.mat"
-exampleSize = 256
+exampleSize = 1024
 #Get object from which tensorflow will pull data from
 trainDataObj = seismicDataFourier(filename, settingsFilename, exampleSize, shuffle=True, scaleByChannel=False)
 
@@ -29,12 +29,12 @@ params = {
     'savePeriod':      200, #In terms of displayPeriod
     #output plots directory
     'plotDir':         "plots/",
-    'plotReconPeriod':  600*500,   #400*500,
-    'plotWeightPeriod': 600*500,#400*500,
+    'plotReconPeriod':  1000*500,   #400*500,
+    'plotWeightPeriod': 1000*500,#400*500,
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       600,
+    'writeStep':       1000, #600,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfSparseCode/lca_adam_seismic_ps1024_nf256_dyn_scale/checkpoints/save-model-2200500",
@@ -42,14 +42,14 @@ params = {
     'device':          '/gpu:0',
     #####FISTA PARAMS######
     'numIterations':   100001,
-    'displayPeriod':   600,
+    'displayPeriod':   1000,
     #Batch size
     'batchSize':       4,
     #Learning rate for optimizer
-    'learningRateA':   3e-5,
-    'learningRateW':   .05,
+    'learningRateA':   5e-5,
+    'learningRateW':   .1,
     #Lambda in energy function
-    'thresh':          .005,
+    'thresh':          .01,
     #Number of features in V1
     'numV':            4096, #TODO make overcomplete
 
