@@ -21,7 +21,7 @@ params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_seismic_fourier/",
+    'runDir':          "/lca_adam_seismic_fourier_sparse/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -29,27 +29,27 @@ params = {
     'savePeriod':      200, #In terms of displayPeriod
     #output plots directory
     'plotDir':         "plots/",
-    'plotReconPeriod':  1000*500,   #400*500,
-    'plotWeightPeriod': 1000*500,#400*500,
+    'plotReconPeriod':  600*500,   #400*500,
+    'plotWeightPeriod': 600*500,#400*500,
     #Progress step
     'progress':        100,
     #Controls how often to write out to tensorboard
-    'writeStep':       1000, #600,
+    'writeStep':       600,
     #Flag for loading weights from checkpoint
     'load':            False,
     'loadFile':        "/home/slundquist/mountData/tfSparseCode/lca_adam_seismic_ps1024_nf256_dyn_scale/checkpoints/save-model-2200500",
     #Device to run on
-    'device':          '/gpu:0',
+    'device':          '/gpu:1',
     #####FISTA PARAMS######
-    'numIterations':   100001,
-    'displayPeriod':   1000,
+    'numIterations':   100000001,
+    'displayPeriod':   600,
     #Batch size
     'batchSize':       4,
     #Learning rate for optimizer
     'learningRateA':   5e-5,
     'learningRateW':   .1,
     #Lambda in energy function
-    'thresh':          .01,
+    'thresh':          .025,
     #Number of features in V1
     'numV':            4096, #TODO make overcomplete
 
