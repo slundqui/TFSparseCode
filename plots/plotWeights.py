@@ -43,7 +43,7 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
 
     #Normalize each patch individually
     for weight in range(num_weights):
-        weight_y = weight/subplot_x
+        weight_y = int(weight/subplot_x)
         weight_x = weight%subplot_x
 
         startIdx_x = weight_x*patch_x
@@ -57,15 +57,23 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
         #Set mean to 0
         weight_patch = weight_patch - np.mean(weight_patch)
         scaleVal = np.max([np.fabs(weight_patch.max()), np.fabs(weight_patch.min())])
-        weight_patch = weight_patch / scaleVal
+        weight_patch = weight_patch / (scaleVal+1e-6)
         weight_patch = (weight_patch + 1)/2
 
         outWeightMat[startIdx_y:endIdx_y, startIdx_x:endIdx_x, :] = weight_patch
 
-    fig = plt.figure()
-    plt.imshow(outWeightMat)
-    plt.savefig(outFilename)
-    plt.close(fig)
+    if(patch_f == 1 or patch_f == 3):
+        fig = plt.figure()
+        plt.imshow(outWeightMat)
+        plt.savefig(outFilename)
+        plt.close(fig)
+    else:
+        for f in range(patch_f):
+            fig = plt.figure()
+            outMat = outWeightMat[:, :, f]
+            plt.imshow(outMat, cmap="gray")
+            plt.savefig(outFilename + "f_" + str(f) + ".png")
+            plt.close(fig)
 
     fig = plt.figure()
     plt.hist(weights_matrix.flatten(), 50)

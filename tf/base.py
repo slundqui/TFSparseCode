@@ -2,7 +2,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 import os
-from .utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
+from TFSparseCode.tf.utils import sparse_weight_variable, weight_variable, node_variable, conv2d, conv2d_oneToMany, convertToSparse4d, save_sparse_csr
 #import matplotlib.pyplot as plt
 #from pvtools import writepvpfile
 
