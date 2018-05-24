@@ -2,16 +2,8 @@ import random
 import pdb
 import numpy as np
 from scipy.io import loadmat
-import matplotlib.pyplot as plt
-#Be sure to include OpenPV/python/pvtools in your PYTHONPATH
-#from pvtools import writepvpfile
 import os
-
-def readFile(filename):
-    fn = open(filename, 'r')
-    content = fn.readlines()
-    fn.close()
-    return [f[:-1] for f in content] #Remove new lines
+import TFSparseCode.dataObj.utils as utils
 
 class seismicData(object):
     #filename is a list of filenames that contain seismic data
@@ -25,7 +17,7 @@ class seismicData(object):
         self.numChannels = settings['channels2save'].size
         self.inputShape = [1, exampleSize, self.numChannels]
         #Read list of filenames and store into member variable
-        self.fnList = readFile(filename)
+        self.fnList = utils.readList(filename)
         self.numFiles = len(self.fnList)
         #Shuffle files
         self.doShuffle = shuffle

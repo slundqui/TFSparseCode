@@ -7,14 +7,7 @@ import pdb
 import random
 from scipy import sparse
 from pvtools import readpvpfile
-
-def readList(filename):
-    f = open(filename, 'r')
-    allLines = f.readlines()
-    f.close()
-    #Remove newlines from all lines
-    return [line[:-1] for line in allLines]
-
+import TFSparseCode.dataObj.utils as utils
 
 """
 An object that handles data input
@@ -35,7 +28,7 @@ class dataObj(object):
     #the max dimension to inMaxDim
     def __init__(self, imgList, resizeMethod="crop", shuffle=True, skip=1, seed=None, getGT=False, rangeIdx=None):
         self.resizeMethod=resizeMethod
-        self.imgFiles = readList(imgList)
+        self.imgFiles = utils.readList(imgList)
         self.numImages = len(self.imgFiles)
         if(rangeIdx == None):
             self.shuffleIdx = range(self.numImages)

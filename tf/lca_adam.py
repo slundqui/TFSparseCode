@@ -6,6 +6,7 @@ from TFSparseCode.plots.plotWeights import plot_weights, plot_1d_weights
 from TFSparseCode.plots.plotRecon import plotRecon1d, plotRecon
 from TFSparseCode.tf.utils import *
 import os
+import time
 #Using pvp files for saving
 #import pvtools as pv
 
@@ -23,6 +24,7 @@ class LCA_ADAM(base):
         self.patchSizeY = params['patchSizeY']
         self.patchSizeX = params['patchSizeX']
         self.inputMult = params['inputMult']
+        self.normalize = params['normalize']
 
     def runModel(self):
         #Normalize weights to start
@@ -43,7 +45,8 @@ class LCA_ADAM(base):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params, dataObj):
         super(LCA_ADAM, self).__init__(params, dataObj)
-        self.currImg = self.dataObj.getData(self.batchSize)
+        #TODO make mask optional
+        (self.currImg, self.currMask) = self.dataObj.getData(self.batchSize)
 
     #Builds the model. inMatFilename should be the vgg file
     def buildModel(self, inputShape):
@@ -64,14 +67,29 @@ class LCA_ADAM(base):
             with tf.name_scope("inputOps"):
                 #Get convolution variables as placeholders
                 self.inputImage = node_variable(self.imageShape, "inputImage")
+                defaultMask = tf.zeros(self.imageShape)
+                self.inputMask = tf.placeholder_with_default(defaultMask, self.imageShape)
+
+                #Normalize image
+                if(self.normalize):
+                    n = tf.reduce_sum(1-self.inputMask, axis=[1, 2], keepdims=True)
+                    #Avoid divide by 0
+                    n = tf.where(tf.equal(n, 0), tf.ones(n.shape), n)
+                    self.data_mean = tf.reduce_sum(self.inputImage, axis=[1,2], keepdims=True)/n
+                    self.data_std = tf.sqrt(tf.reduce_sum(tf.square(self.inputImage - self.data_mean), axis=[1, 2], keepdims=True)/n)
+                    #Avoid divide by 0
+                    self.data_std = tf.where(tf.equal(self.data_std, 0), tf.ones(self.data_std.shape), self.data_std)
+
+                    self.scaled_inputImage = (self.inputImage - self.data_mean) / self.data_std
 
                 #Scale inputImage
                 if(self.fc):
                     #TODO is this necessary for fc?
                     #self.scaled_inputImage = self.inputImage/(np.sqrt(self.imageShape[1]*self.imageShape[2]*self.imageShape[3]))
-                    self.scaled_inputImage = self.inputImage
+                    self.scaled_inputImage = self.scaled_inputImage
                 else:
-                    self.scaled_inputImage = self.inputImage/(np.sqrt(self.patchSizeX*self.patchSizeY*self.imageShape[3]))
+                    self.patch_norm = np.sqrt(self.patchSizeX * self.patchSizeY*self.imageShape[3])
+                    self.scaled_inputImage = self.scaled_inputImage/self.patch_norm
                 self.scaled_inputImage = self.scaled_inputImage * self.inputMult
                 #self.checked_inputImage = tf.check_numerics(self.scaled_inputImage, "scaled_input error", name=None)
 
@@ -100,6 +118,21 @@ class LCA_ADAM(base):
                     assert(self.VStrideY >= 1)
                     assert(self.VStrideX >= 1)
                     self.recon = tf.nn.conv2d_transpose(self.V1_A, self.V1_W, self.imageShape, [1, self.VStrideY, self.VStrideX, 1], padding='SAME', name="recon")
+
+                #Unnormalize
+                self.unscaled_recon = self.recon/self.inputMult
+
+                if (self.fc):
+                    pass
+                else:
+                    self.unscaled_recon = self.unscaled_recon * self.patch_norm
+
+                if(self.normalize):
+                    self.unscaled_recon = (self.unscaled_recon * self.data_std) + self.data_mean
+                else:
+                    self.unscaled_recoon = recon
+
+
                 #self.recon = tf.check_numerics(self.recon, 'recon error', name=None)
 
             with tf.name_scope("Error"):
@@ -172,6 +205,7 @@ class LCA_ADAM(base):
         #self.h_normVals = tf.histogram_summary('normVals', self.normVals, name="normVals")
 
     def encodeImage(self, feedDict):
+        progress_time = time.time()
         #Reset u
         self.sess.run(self.v1Reset)
         for i in range(self.displayPeriod):
@@ -185,7 +219,9 @@ class LCA_ADAM(base):
                 summary = self.sess.run(self.mergedSummary, feed_dict=feedDict)
                 self.train_writer.add_summary(summary, self.timestep)
             if(self.timestep%self.progress == 0):
-                print("Timestep ", self.timestep)
+                tmp_time = time.time()
+                print("Timestep ", self.timestep, ":", float(self.progress)/(tmp_time - progress_time), " iterations per second")
+                progress_time = tmp_time
             if(self.timestep%self.plotReconPeriod == 0):
                 self.plotRecon()
             if(self.timestep%self.plotWeightPeriod == 0):
@@ -195,7 +231,7 @@ class LCA_ADAM(base):
     #Trains model for numSteps
     def trainA(self, save):
         #Define session
-        feedDict = {self.inputImage: self.currImg}
+        feedDict = {self.inputImage: self.currImg, self.inputMask: self.currMask}
         self.encodeImage(feedDict)
 
         if(save):
@@ -216,15 +252,15 @@ class LCA_ADAM(base):
            os.makedirs(outPlotDir)
 
         np_inputImage = self.currImg
-        feedDict = {self.inputImage: self.currImg}
-        np_recon = np.squeeze(self.sess.run(self.recon, feed_dict=feedDict))
+        feedDict = {self.inputImage: self.currImg, self.inputMask:self.currMask}
+        [np_recon, np_unscaled_recon] = np.squeeze(self.sess.run([self.recon, self.unscaled_recon], feed_dict=feedDict))
 
         #Draw recons
         plotStr = outPlotDir + "recon_"
         if(np_recon.ndim == 3):
-            rescaled_inputImage = np.squeeze(self.sess.run(self.scaled_inputImage, feed_dict=feedDict))
+            [rescaled_inputImage, orig_inputImage] = np.squeeze(self.sess.run([self.scaled_inputImage, self.inputImage], feed_dict=feedDict))
             numRecon = np.minimum(self.batchSize, 4)
-            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon))
+            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon), unscaled_img_matrix=orig_inputImage, unscaled_recon_matrix=np_unscaled_recon)
         else:
             plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
 
@@ -246,11 +282,11 @@ class LCA_ADAM(base):
             plot_weights(np_V1_W, plotStr)
 
     def trainW(self):
-        feedDict = {self.inputImage: self.currImg}
+        feedDict = {self.inputImage: self.currImg, self.inputMask: self.currMask}
         #Update weights
         self.sess.run(self.optimizerW, feed_dict=feedDict)
         #New image
-        self.currImg = self.dataObj.getData(self.batchSize)
+        (self.currImg, self.currMask) = self.dataObj.getData(self.batchSize)
 
 
     #Finds sparse encoding of inData
