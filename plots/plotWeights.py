@@ -80,9 +80,14 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
     plt.savefig(outFilename + ".hist.png")
     plt.close(fig)
 
-COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-         '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-         '#bcbd22', '#17becf']
+colors=[[0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 1.0],
+        [1.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+        [.5, .5, .5]]
 
 #Order defines the order in weights_matrix for num_weights, v
 #Activity has to be in (batch, x, f)
@@ -112,12 +117,11 @@ def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None,
         if(sepFeatures):
             fig, axs = plt.subplots(numf, sharex=True, sharey=True, figsize=(8, 12))
             for f in range(numf):
-                axs[f].plot(permute_weights[weightIdx, :, f], color=COLORS[f%len(COLORS)])
+                axs[f].plot(permute_weights[weightIdx, :, f], color=colors[f%len(colors)])
             plt.subplots_adjust(wspace=0, hspace=0)
         else:
             fig = plt.figure()
             plt.plot(permute_weights[weightIdx, :, :])
         plt.savefig(outFilename + "weight"+str(weight)+".png")
         plt.close(fig)
-        np.savetxt(outFilename + "weight"+str(weight)+".txt", permute_weights[weightIdx, :], delimiter=",")
 
