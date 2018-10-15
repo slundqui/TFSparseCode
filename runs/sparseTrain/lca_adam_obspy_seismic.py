@@ -21,7 +21,7 @@ class Params(object):
     run_dir = out_dir + "/deep_lca_adam_obspy_seismic/"
     save_period  = 10000
     #output plots directory
-    plot_period = 10 #10000
+    plot_period = 1000
     eval_period = 1000
     #Progress step
     progress  = 10
