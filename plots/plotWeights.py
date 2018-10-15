@@ -80,9 +80,14 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
     plt.savefig(outFilename + ".hist.png")
     plt.close(fig)
 
-COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-         '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-         '#bcbd22', '#17becf']
+colors=[[0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 1.0],
+        [1.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+        [.5, .5, .5]]
 
 #Order defines the order in weights_matrix for num_weights, v
 #Activity has to be in (batch, x, f)

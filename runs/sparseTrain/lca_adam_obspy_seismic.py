@@ -7,11 +7,11 @@ import numpy as np
 import pdb
 import os
 
-home_dir = os.getenv("HOME")
-filename = "/home/slundquist/mountData/datasets/CanadianData_feb.txt"
+filename = "/home/slundquist/mountData/datasets/CanadianData_2016.txt"
 example_size = 10000
+event_filename = "/home/slundquist/mountData/datasets/query_2016.csv"
+station_csv = "/home/slundquist/mountData/datasets/station_info.csv"
 
-#Get object from which tensorflow will pull data from
 trainDataObj = obspySeismicData(filename, example_size, seed=123456)
 
 class Params(object):
