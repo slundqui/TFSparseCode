@@ -4,7 +4,7 @@ import models.utils as utils
 import pdb
 import numpy as np
 from models.lcaDeepSC import lcaDeepSC
-from plot.plot import plotRecon, plotWeights
+from plots import plotRecon, plotWeights
 
 class sparseCode(base):
     def buildModel(self):
@@ -12,21 +12,30 @@ class sparseCode(base):
             with tf.name_scope("placeholders"):
                 #TODO Split input into input and ground truth, since last input is never being used
                 self.input = tf.placeholder(tf.float32,
-                        shape=[self.params.batch_size, ] + self.params.image_shape,
+                        shape=[self.params.batch_size, ] + self.params.input_shape,
                         name = "input")
 
-                (data_mean, data_var) = tf.nn.moments(self.sub_input, axes=1, keep_dims=True)
+                self.ndims_input = len(self.params.input_shape)
+                #TODO add in for images instead of only 1d
+                if(self.ndims_input == 2):
+                    (example_size, num_features) = self.params.input_shape
+                else:
+                    print("Not implemented")
+                    assert(0)
+
+
+                (data_mean, data_var) = tf.nn.moments(self.input, axes=1, keep_dims=True)
                 if(self.params.norm_input):
-                    calc_norm = ((self.sub_input - data_mean)/tf.sqrt(data_var)) * self.params.target_norm_std
+                    calc_norm = ((self.input - data_mean)/tf.sqrt(data_var)) * self.params.target_norm_std
                     #Expand data_mean and data_var to have same shape as input
-                    data_mean = tf.tile(data_mean, [1, self.params.example_size, 1])
-                    data_var = tf.tile(data_var, [1, self.params.example_size, 1])
+                    data_mean = tf.tile(data_mean, [1, example_size, 1])
+                    data_var = tf.tile(data_var, [1, example_size, 1])
 
                     self.norm_input = tf.where(tf.equal(data_var, 0), data_mean, calc_norm)
                 else:
-                    self.norm_input = self.sub_input * self.params.target_norm_std
+                    self.norm_input = self.input * self.params.target_norm_std
 
-                self.varDict["input"] = self.sub_input
+                self.varDict["input"] = self.input
                 self.varDict["norm_input"] = self.norm_input
                 #self.varDict["mask"] = self.mask
 
@@ -99,13 +108,13 @@ class sparseCode(base):
 
 
     def getTrainFeedDict(self, dataObj):
-        dataDict = dataObj.getData(self.params.batch_size, self.params.example_size, dataset="train")
+        dataDict = dataObj.getData(self.params.batch_size, dataset="train")
         outdict = {}
         outdict[self.input] = dataDict['data']
         return outdict
 
     def getTestFeedDict(self, dataObj):
-        dataDict = dataObj.getData(self.params.batch_size, self.params.example_size, dataset="test")
+        dataDict = dataObj.getData(self.params.batch_size, dataset="test")
         outdict = {}
         outdict[self.input] = dataDict['data']
         return outdict
@@ -122,8 +131,11 @@ class sparseCode(base):
     def plotRecon(self, feed_dict, fn_prefix, is_train):
         np_input = self.sess.run(self.norm_input, feed_dict=feed_dict)
         np_recon = self.sess.run(self.scObj.model["recon"][0])
-        #TODO
-        assert(0)
+
+        if(self.ndims_input == 2):
+            plotRecon.plotRecon1D(np_recon, np_input, self.train_plot_dir)
+        elif(self.ndims_input == 2):
+            assert(0)
 
     def plotWeights(self, fn_prefix):
         np_dict = self.sess.run(self.scObj.model["layer_weights"])
@@ -134,7 +146,7 @@ class sparseCode(base):
             curr_dict = np_dict[l]
             curr_act_count = np_act_count[l]
             #Plot weights
-            plotWeights(curr_dict, fn_prefix+"layer_"+str(l) + "_weights", activity_count=curr_act_count, legend = self.params.labels)
+            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights", activity_count=curr_act_count, legend = self.params.feature_labels)
 
     def plot(self, step, feed_dict, fn_prefix, is_train):
         self.plotRecon(feed_dict, fn_prefix, is_train)

@@ -86,9 +86,10 @@ COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
 
 #Order defines the order in weights_matrix for num_weights, v
 #Activity has to be in (batch, x, f)
-def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None, sepFeatures=False):
-    numWeights = weights_matrix.shape[order[0]]
-    patchSize = weights_matrix.shape[order[1]]
+def plotWeights1D(weights_matrix, out_prefix, order=[0, 1, 2], activity_count=None, sepFeatures=False, legend=None, num_plot_weights=10):
+    num_weights = weights_matrix.shape[order[0]]
+    num_weights = min(num_weights, num_plot_weights)
+    patch_size = weights_matrix.shape[order[1]]
     numf = weights_matrix.shape[order[2]]
 
     if(order == [0, 1, 2, 3]):
@@ -97,27 +98,37 @@ def plot_1d_weights(weights_matrix, outFilename, order=[0, 1, 2], activity=None,
         permute_weights = weights_matrix.copy()
         permute_weights = np.transpose(weights_matrix, order)
 
-    if(activity is not None):
-        c_activity = activity.copy()
-        c_activity[np.nonzero(activity > 0)] = 1
-        count = np.sum(c_activity, axis=(0, 1, 2))
-        sortIdxs = np.argsort(count)
+    if(activity_count is not None):
+        sort_idxs = np.argsort(activity_count)
         #This sorts from smallest to largest, reverse
-        sortIdxs = sortIdxs[::-1]
+        sort_idxs = sort_idxs[::-1]
+        sort_activity_count = activity_count[sort_idxs]
+        #make bar chart of act count
+        ind = np.arange(1, num_weights+1)
+        fig = plt.figure()
+        plt.bar(ind, weights_matrix.shape[order[0]])
+        outfn = out_prefix + "_act_count.png"
+        plt.savefig(outfn)
+        plt.close("all")
     else:
-        sortIdxs = range(numWeights)
+        sort_idxs = range(num_weights)
 
-    for weight in range(numWeights):
-        weightIdx = sortIdxs[weight]
+    for weight in range(num_weights):
+        weightIdx = sort_idxs[weight]
         if(sepFeatures):
             fig, axs = plt.subplots(numf, sharex=True, sharey=True, figsize=(8, 12))
             for f in range(numf):
                 axs[f].plot(permute_weights[weightIdx, :, f], color=COLORS[f%len(COLORS)])
+                if(legend is not None):
+                    axs[f].set_title(legend[f])
             plt.subplots_adjust(wspace=0, hspace=0)
         else:
             fig = plt.figure()
-            plt.plot(permute_weights[weightIdx, :, :])
-        plt.savefig(outFilename + "weight"+str(weight)+".png")
-        plt.close(fig)
-        np.savetxt(outFilename + "weight"+str(weight)+".txt", permute_weights[weightIdx, :], delimiter=",")
+            for f in range(numf):
+                plt.plot(permute_weights[weightIdx, :, :], color=COLORS[f%len(COLORS)])
+            if(legend is not None):
+                lgd = plt.legend(legend, loc=1, bbox_to_anchor=(1.6, 1))
+        plt.savefig(out_prefix + "weight"+str(weight)+".png")
+        plt.close("all")
+        #np.savetxt(outFilename + "weight"+str(weight)+".txt", permute_weights[weightIdx, :], delimiter=",")
 

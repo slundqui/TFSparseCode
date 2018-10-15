@@ -2,7 +2,7 @@ import obspy as ob
 import numpy as np
 import pdb
 import random
-import TFSparseCode.dataObj.utils as utils
+import TFSparseCode.data.utils as utils
 import datetime
 from matplotlib.dates import datestr2num
 import csv
@@ -22,7 +22,7 @@ class obspySeismicData(object):
         self.num_channels = len(self.trace_dict.keys())
         self.time_window = self.example_size / self.target_rate
         self.delta_time = self.end_time - self.start_time
-        self.inputShape = [1, self.example_size, self.num_channels]
+        self.inputShape = [self.example_size, self.num_channels]
 
         if(event_csv is not None):
             with open(event_csv, 'r') as file:
@@ -70,6 +70,7 @@ class obspySeismicData(object):
         new_st = ob.Stream()
 
         count = 0
+        self.feature_labels = []
 
         #Store max amplitude for each trace in stream
         self.trace_stats= {}
@@ -89,6 +90,7 @@ class obspySeismicData(object):
                 stats_tuple = (trace.stats['starttime'], trace.stats['endtime'], trace.max())
                 if(id_val not in trace_dict):
                     trace_dict[id_val] = count
+                    self.feature_labels.append(id_val)
                     self.trace_stats[id_val] = [stats_tuple,]
                     count += 1
                 else:
@@ -185,17 +187,21 @@ class obspySeismicData(object):
         #outData = (outData - mean) / std
         return(outData, outMask)
 
-    def getData(self, batchSize):
-        outData = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+    def getData(self, batchSize, dataset = "all"):
+        outData = np.zeros([batchSize,] + self.inputShape)
         #TODO
-        outMask = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
+        outMask = np.zeros([batchSize,] + self.inputShape)
         for b in range(batchSize):
             (data, mask) = self.getExample()
             while(np.sum(mask) == mask.size):
                 (data, mask) = self.getExample()
-            outData[b, 0, :, :] = data
-            outMask[b, 0, :, :] = mask
-        return(outData, outMask)
+            outData[b, :, :] = data
+            outMask[b, :, :] = mask
+
+        outDict = {}
+        outDict["data"] = outData
+        outDict["mask"] = outMask
+        return outDict
         #return outData
 
 if __name__=="__main__":

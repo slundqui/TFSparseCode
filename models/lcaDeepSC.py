@@ -70,8 +70,8 @@ class lcaDeepSC(object):
                 curr_dict = utils.l2_weight_variable(D_shape, "dictionary"+str(l))
 
                 if("sc" in curr_layer_type):
-                    curr_potential = utils.weight_variable(act_shape, 1e-3)
-                    curr_activation = utils.weight_variable(act_shape, 1e-3)
+                    curr_potential = utils.weight_variable(act_shape, "potential"+str(l), std=1e-3)
+                    curr_activation = utils.weight_variable(act_shape, "activation"+str(l), std=1e-3)
 
                     if("sc_fc" == curr_layer_type):
                         curr_recon = tf.matmul(curr_activation, curr_dict, transpose_b=True)
