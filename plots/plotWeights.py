@@ -80,7 +80,7 @@ def plot_weights(weights_matrix, outFilename, order=[0, 1, 2, 3]):
     plt.savefig(outFilename + ".hist.png")
     plt.close(fig)
 
-colors=[[0.0, 0.0, 0.0],
+COLORS=[[0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0],
         [0.0, 1.0, 0.0],
         [1.0, 0.0, 0.0],
@@ -109,9 +109,9 @@ def plotWeights1D(weights_matrix, out_prefix, order=[0, 1, 2], activity_count=No
         sort_idxs = sort_idxs[::-1]
         sort_activity_count = activity_count[sort_idxs]
         #make bar chart of act count
-        ind = np.arange(1, num_weights+1)
+        ind = np.arange(1, weights_matrix.shape[order[0]]+1)
         fig = plt.figure()
-        plt.bar(ind, weights_matrix.shape[order[0]])
+        plt.bar(ind, sort_activity_count)
         outfn = out_prefix + "_act_count.png"
         plt.savefig(outfn)
         plt.close("all")
@@ -127,13 +127,14 @@ def plotWeights1D(weights_matrix, out_prefix, order=[0, 1, 2], activity_count=No
                 if(legend is not None):
                     axs[f].set_title(legend[f])
             plt.subplots_adjust(wspace=0, hspace=0)
+            plt.savefig(out_prefix + "_weight"+str(weight)+".png")
         else:
             fig = plt.figure()
             for f in range(numf):
-                plt.plot(permute_weights[weightIdx, :, :], color=COLORS[f%len(COLORS)])
+                plt.plot(permute_weights[weightIdx, :, f], color=COLORS[f%len(COLORS)])
             if(legend is not None):
                 lgd = plt.legend(legend, loc=1, bbox_to_anchor=(1.6, 1))
-        plt.savefig(out_prefix + "weight"+str(weight)+".png")
+            plt.savefig(out_prefix + "_weight"+str(weight)+".png", additional_artists=[lgd])
         plt.close("all")
         #np.savetxt(outFilename + "weight"+str(weight)+".txt", permute_weights[weightIdx, :], delimiter=",")
 

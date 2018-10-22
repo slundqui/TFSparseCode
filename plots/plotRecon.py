@@ -69,7 +69,7 @@ def sliding_window(data, window):
     return np.array(vdata), np.array(mdata)
 
 #Recon must be in (batch, time, features)
-def plotRecon1d(recon_matrix, img_matrix, outPrefix, r=None, x_range=None, unscaled_img_matrix=None, unscaled_recon_matrix=None, var_window=20, mask_matrix=None, groups=None, group_title=None):
+def plotRecon1D(recon_matrix, img_matrix, outPrefix, r=None, x_range=None, unscaled_img_matrix=None, unscaled_recon_matrix=None, var_window=20, mask_matrix=None, groups=None, group_title=None):
     (batch, nt, nf) = recon_matrix.shape
     (batchImg, ntImg, nfImg) = img_matrix.shape
 

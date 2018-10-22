@@ -88,6 +88,11 @@ class sparseCode(base):
 
                 self.update_act_count = tf.group(*self.update_act_count)
 
+                #Final recon set here
+                self.input_recon = self.scObj.model["recon"][0]
+                if(self.params.norm_input):
+                    self.unscaled_recon = ((self.input_recon/self.params.target_norm_std) + data_mean) * tf.sqrt(data_var)
+
                 for l in range(self.params.num_layers):
                     self.varDict   ["layer_"+str(l)+"_dict"]        = self.scObj.model["dictionary"][l]
                     self.varDict   ["layer_"+str(l)+"_input"]          = self.scObj.model["input"][l]
@@ -130,10 +135,16 @@ class sparseCode(base):
 
     def plotRecon(self, feed_dict, fn_prefix, is_train):
         np_input = self.sess.run(self.norm_input, feed_dict=feed_dict)
-        np_recon = self.sess.run(self.scObj.model["recon"][0])
+        np_recon = self.sess.run(self.input_recon, feed_dict=feed_dict)
+
+        np_unscaled_input = feed_dict[self.input]
+        if(self.params.norm_input):
+            np_unscaled_recon = self.sess.run(self.unscaled_recon, feed_dict=feed_dict)
 
         if(self.ndims_input == 2):
-            plotRecon.plotRecon1D(np_recon, np_input, self.train_plot_dir)
+            plotRecon.plotRecon1D(np_recon, np_input, fn_prefix+"_recon",
+                    unscaled_img_matrix = np_unscaled_input, unscaled_recon_matrix=np_unscaled_recon,
+                    groups=self.params.plot_groups, group_title=self.params.plot_group_title)
         elif(self.ndims_input == 2):
             assert(0)
 
@@ -146,7 +157,8 @@ class sparseCode(base):
             curr_dict = np_dict[l]
             curr_act_count = np_act_count[l]
             #Plot weights
-            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights", activity_count=curr_act_count, legend = self.params.feature_labels)
+            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights", activity_count=curr_act_count, sepFeatures=True,
+                    legend=self.params.feature_labels)
 
     def plot(self, step, feed_dict, fn_prefix, is_train):
         self.plotRecon(feed_dict, fn_prefix, is_train)

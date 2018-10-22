@@ -104,9 +104,9 @@ class obspySeismicData(object):
         #stores list of stds for each trace in dictionary
         #max_dict = {}
         #std_dict = {}
+        self.feature_labels = []
 
         count = 0
-        self.feature_labels = []
 
         #Store max amplitude for each trace in stream
         self.trace_stats= {}
@@ -123,6 +123,7 @@ class obspySeismicData(object):
                 stats_tuple = (trace.stats['starttime'], trace.stats['endtime'], trace.max())
                 if(id_val not in trace_dict):
                     trace_dict[id_val] = count
+                    self.feature_labels.append(id_val)
                     self.trace_stats[id_val] = [stats_tuple,]
                     count += 1
                 else:
