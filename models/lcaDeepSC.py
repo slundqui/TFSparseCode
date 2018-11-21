@@ -4,7 +4,7 @@ import numpy as np
 import pdb
 
 class lcaDeepSC(object):
-    def __init__(self, inputNode, num_layers, l1_weight, dict_size, sc_lr, dict_lr, layer_type=None, patch_size=None, stride=None, mask=None, err_weight=None, act_weight=None, normalize_act=None, inject_act_bool=None, inject_act=None):
+    def __init__(self, inputNode, num_layers, l1_weight, dict_size, sc_lr, dict_lr, layer_type=None, patch_size=None, stride=None, mask=None, err_weight=None, act_weight=None, top_down_weight=None, normalize_act=None, inject_act_bool=None, inject_act=None):
         curr_input = inputNode
         #Model variables and outputs
         self.model = {}
@@ -22,6 +22,12 @@ class lcaDeepSC(object):
         self.model["act_norm"] = []
         self.model["act_mean"] = []
         self.model["act_std"] = []
+        self.model["act_max"] = []
+        self.model["pot_norm"] = []
+        self.model["pot_mean"] = []
+        self.model["pot_std"] = []
+        self.model["input_norm"] = []
+        self.model["output_norm"] = []
 
         assert(layer_type is not None)
 
@@ -36,6 +42,8 @@ class lcaDeepSC(object):
             err_weight = [1 for i in range(num_layers)]
         if(act_weight is None):
             act_weight = [1 for i in range(num_layers)]
+        if(top_down_weight is None):
+            top_down_weight = [1 for i in range(num_layers)]
 
         for l in range(num_layers):
             with tf.name_scope("lca_layer_"+str(l)):
@@ -53,7 +61,7 @@ class lcaDeepSC(object):
                 else:
                     [batch, input_features] = input_shape
 
-                if("fc" in curr_layer_type):
+                if("sc_fc" == curr_layer_type):
                     switch_fc = True
                     curr_input = tf.reshape(curr_input, [batch, -1])
                     input_features = curr_input.get_shape().as_list()[1]
@@ -69,66 +77,48 @@ class lcaDeepSC(object):
 
                 curr_dict = utils.l2_weight_variable(D_shape, "dictionary"+str(l))
 
-                if("sc" in curr_layer_type):
-                    curr_potential = utils.weight_variable(act_shape, "potential"+str(l), std=1e-3)
-                    curr_activation = utils.weight_variable(act_shape, "activation"+str(l), std=1e-3)
+                curr_potential = utils.weight_variable(act_shape, "potential"+str(l), std=1e-3)
+                curr_activation = utils.weight_variable(act_shape, "activation"+str(l), std=1e-3)
 
-                    if("sc_fc" == curr_layer_type):
-                        curr_recon = tf.matmul(curr_activation, curr_dict, transpose_b=True)
-                    elif("sc_conv" == curr_layer_type):
-                        curr_recon = tf.contrib.nn.conv1d_transpose(curr_activation, curr_dict, [batch, input_size, input_features], curr_stride, padding='SAME')
-                    else:
-                        assert(0)
-
-                    curr_error = curr_input - curr_recon
-                    curr_recon_error = err_weight[l] * 0.5 * tf.reduce_mean(tf.reduce_sum(curr_error**2, axis=reduce_axis))
-                    curr_l1_sparsity = err_weight[l] * tf.reduce_mean(tf.reduce_sum(tf.abs(curr_activation), axis=reduce_axis))
-                    #curr_recon_error = err_weight[l] * 0.5 * tf.reduce_mean(curr_error**2)
-                    #curr_l1_sparsity = err_weight[l] * tf.reduce_mean(tf.abs(curr_activation))
-                    curr_loss = curr_recon_error + 0.5 * curr_l1_weight * curr_l1_sparsity
-
-                    self.model["error"].append(curr_error)
-                    self.model["recon_error"].append(curr_recon_error)
-                    self.model["potential"].append(curr_potential)
-                    self.model["activation"].append(curr_activation)
-                    self.model["recon"].append(curr_recon)
-                    self.model["l1_sparsity"].append(curr_l1_sparsity)
-                    self.model["loss"].append(curr_loss)
-
-                    #Ops
-                    #Use inject act if last layer for semi-supervised learning
-                    calc_act = tf.nn.relu(curr_potential - curr_l1_weight)
-                    if(l == num_layers - 1 and inject_act_bool is not None):
-                        set_act = tf.where(inject_act_bool, inject_act, calc_act)
-                        self.calc_activation.append(curr_activation.assign(set_act))
-                    else:
-                        self.calc_activation.append(curr_activation.assign(calc_act))
-
-                    if(curr_l1_weight == 0):
-                        low_init_val = -.1
-                        high_init_val = .1
-                    else:
-                        low_init_val = -.3*curr_l1_weight
-                        high_init_val  = 1.1*curr_l1_weight
-                    potential_init = tf.random_uniform(act_shape, low_init_val, high_init_val, dtype=tf.float32)
-                    self.reset_potential.append(curr_potential.assign(potential_init))
-
+                if("sc_fc" == curr_layer_type):
+                    curr_recon = tf.matmul(curr_activation, curr_dict, transpose_b=True)
+                elif("sc_conv" == curr_layer_type):
+                    curr_recon = tf.contrib.nn.conv1d_transpose(curr_activation, curr_dict, [batch, input_size, input_features], curr_stride, padding='SAME')
                 else:
-                    #Relus here?
-                    if("fc" == curr_layer_type):
-                        curr_activation = tf.matmul(curr_input, curr_dict)
-                    elif("conv" == curr_layer_type):
-                        curr_activation = tf.nn.conv1d(curr_input, curr_dict, curr_stride, padding="SAME")
-                    else:
-                        assert(0)
+                    assert(0)
 
-                    self.model["error"].append(None)
-                    self.model["recon_error"].append(None)
-                    self.model["potential"].append(None)
-                    self.model["activation"].append(None)
-                    self.model["recon"].append(None)
-                    self.model["l1_sparsity"].append(None)
-                    self.model["loss"].append(None)
+                curr_error = curr_input - curr_recon
+                curr_recon_error = err_weight[l] * 0.5 * tf.reduce_mean(tf.reduce_sum(curr_error**2, axis=reduce_axis))
+                curr_l1_sparsity = err_weight[l] * tf.reduce_mean(tf.reduce_sum(tf.abs(curr_activation), axis=reduce_axis))
+                #curr_recon_error = err_weight[l] * 0.5 * tf.reduce_mean(curr_error**2)
+                #curr_l1_sparsity = err_weight[l] * tf.reduce_mean(tf.abs(curr_activation))
+                curr_loss = curr_recon_error + 0.5 * curr_l1_weight * curr_l1_sparsity
+
+                self.model["error"].append(curr_error)
+                self.model["recon_error"].append(curr_recon_error)
+                self.model["potential"].append(curr_potential)
+                self.model["activation"].append(curr_activation)
+                self.model["recon"].append(curr_recon)
+                self.model["l1_sparsity"].append(curr_l1_sparsity)
+                self.model["loss"].append(curr_loss)
+
+                #Ops
+                #Use inject act if last layer for semi-supervised learning
+                calc_act = tf.nn.relu(curr_potential - curr_l1_weight)
+                if(l == num_layers - 1 and inject_act_bool is not None):
+                    set_act = tf.where(inject_act_bool, inject_act, calc_act)
+                    self.calc_activation.append(curr_activation.assign(set_act))
+                else:
+                    self.calc_activation.append(curr_activation.assign(calc_act))
+
+                if(curr_l1_weight == 0):
+                    low_init_val = -.1
+                    high_init_val = .1
+                else:
+                    low_init_val = -.3*curr_l1_weight
+                    high_init_val  = 1.1*curr_l1_weight
+                potential_init = tf.random_uniform(act_shape, low_init_val, high_init_val, dtype=tf.float32)
+                self.reset_potential.append(curr_potential.assign(potential_init))
 
                 num_total_act = 1
                 for s in act_shape:
@@ -157,21 +147,37 @@ class lcaDeepSC(object):
                 act_norm = tf.norm(curr_activation, axis=moment_reduce_axis, keepdims=True)
                 act_mean, act_var = tf.nn.moments(curr_activation, axes=moment_reduce_axis, keep_dims=True)
                 act_std = tf.sqrt(act_var)
+                act_max = tf.reduce_max(curr_activation)
+
+                pot_norm = tf.norm(curr_potential, axis=moment_reduce_axis, keepdims=True)
+                pot_mean, pot_var = tf.nn.moments(curr_potential, axes=moment_reduce_axis, keep_dims=True)
+                pot_std = tf.sqrt(pot_var)
+
                 self.model["act_norm"].append(act_norm)
                 self.model["act_mean"].append(act_mean)
                 self.model["act_std"].append(act_std)
+                self.model["act_max"].append(act_max)
+                self.model["pot_norm"].append(pot_norm)
+                self.model["pot_mean"].append(pot_mean)
+                self.model["pot_std"].append(pot_std)
+
+                input_norm = tf.norm(curr_input, axis=moment_reduce_axis)
+                self.model["input_norm"].append(input_norm)
 
                 if(curr_normalize):
-                    curr_input = ((curr_activation - act_mean)/(act_std+1e-8)) * act_weight[l]
+                    #curr_input = ((curr_activation - act_mean)/(act_std+1e-8)) * act_weight[l]
+                    curr_input = ((curr_potential - pot_mean)/(pot_std+1e-8)) * act_weight[l]
                 else:
-                    curr_input = curr_activation * act_weight[l]
+                    #curr_input = curr_activation * act_weight[l]
+                    curr_input = curr_potential * act_weight[l]
+
+                output_norm = tf.norm(curr_input, axis=moment_reduce_axis)
+                self.model["output_norm"].append(output_norm)
+
+                #Stop gradient, as we explcitly compute top down feedback
+                curr_input = tf.stop_gradient(curr_input)
 
         with tf.name_scope("optimizer"):
-            potential_list = [p for p in self.model["potential"] if p is not None]
-            activation_list = [a for a in self.model["activation"] if a is not None]
-            recon_error_list = [e for e in self.model["recon_error"] if e is not None]
-            err_weight_list = [err_weight[i] for (i, e) in enumerate(self.model["recon_error"]) if e is not None]
-
             #Group ops
             self.calc_activation = tf.group(*self.calc_activation)
             self.reset_potential = tf.group(*self.reset_potential)
@@ -180,19 +186,25 @@ class lcaDeepSC(object):
             #TODO different learning rates?
             opt = tf.train.AdamOptimizer(sc_lr)
 
-            total_recon_error = tf.reduce_sum(recon_error_list)
+            total_recon_error = tf.reduce_sum(self.model["recon_error"])
             self.model["total_recon_error"] = total_recon_error
 
             #Calculate recon gradient wrt activation
-            recon_grad = opt.compute_gradients(total_recon_error, activation_list)
+            recon_grad = opt.compute_gradients(total_recon_error, self.model["activation"])
 
             #Apply gradient (plus shrinkage) to potential
             #Needs to be a list of number of gradients, each element as a tuple of (gradient, wrt)
 
             d_potential = []
             for i, (grad, var) in enumerate(recon_grad):
-                shrink_term = err_weight_list[i] * (potential_list[i] - activation_list[i])
-                d_potential.append((grad + shrink_term, potential_list[i]))
+                shrink_term = err_weight[i] * (self.model["potential"][i] - self.model["activation"][i])
+                #The top down term doesn't exist with the recon loss as written, since potential
+                #isnt connected to the total recon loss
+                if(i < (num_layers - 1)):
+                    top_down_term = top_down_weight[i] * self.model["error"][i+1]
+                else:
+                    top_down_term = 0
+                d_potential.append((grad + shrink_term - top_down_term, self.model["potential"][i]))
 
             self.train_step = opt.apply_gradients(d_potential)
             #Reset must be called after apply_gradients to define opt variables
@@ -219,10 +231,7 @@ class lcaDeepSC(object):
             #Allows calculating reconstruction from each layer
             layer_weights = []
             for l in range(num_layers):
-                if("sc" not in layer_type[l]):
-                    layer_weights.append(tf.no_op())
-                    continue
-                recon_l_fc = ("fc" in layer_type[l])
+                recon_l_fc = ("sc_fc" == layer_type[l])
                 recon_l_num_dict = dict_size[l]
                 recon_act = tf.eye(recon_l_num_dict)
                 if(not recon_l_fc):
@@ -231,14 +240,27 @@ class lcaDeepSC(object):
                 switch_conv = not recon_l_fc
 
                 curr_act = recon_act
+                curr_pot = None
                 for ll in reversed(range(l+1)):
                     curr_dict = self.model["dictionary"][ll]
                     curr_layer_type = layer_type[ll]
                     curr_stride = stride[ll]
                     curr_patch_size = patch_size[ll]
+                    curr_l1_weight = l1_weight[ll]
                     curr_normalize = normalize_act[ll]
 
-                    if("fc" not in curr_layer_type):
+                    #Find activity given potential
+                    #Don't normalize layer we're visualizing
+                    if(ll != l):
+                        #Normalize the potential and calculate next activity
+                        if(curr_normalize):
+                            curr_pot = (curr_pot/act_weight[ll]) * (self.model["pot_std"][ll] + 1e-8) + self.model["pot_mean"][ll]
+                        else:
+                            curr_pot = curr_pot/act_weight[ll]
+                        curr_act = tf.nn.relu(curr_pot - curr_l1_weight)
+
+                    #Reshape if needed (fc -> conv layer)
+                    if("sc_conv" == curr_layer_type):
                         input_shape = curr_act.get_shape().as_list()
                         if(not switch_conv):
                             switch_conv = True
@@ -246,17 +268,10 @@ class lcaDeepSC(object):
                             input_shape[0] = recon_l_num_dict
                             curr_act = tf.reshape(curr_act, input_shape)
 
-                    #Don't normalize if this is the layer we're visualizing
-                    if(ll != l):
-                        if(curr_normalize):
-                            curr_act = (curr_act/act_weight[ll]) * self.model["act_std"][ll] + self.model["act_mean"][ll]
-                        else:
-                            curr_act = curr_act/act_weight[ll]
-
-                    if("fc" in curr_layer_type):
-                        curr_act = tf.matmul(curr_act, curr_dict, transpose_b=True)
+                    #Reconstruct given the activity
+                    if("sc_fc" == curr_layer_type):
+                        curr_pot = tf.matmul(curr_act, curr_dict, transpose_b=True)
                     else:
-                        #If doing reconstruction from a fc layer
                         if(recon_l_fc):
                             if(ll == 0):
                                 output_shape = inputNode.get_shape().as_list()
@@ -275,12 +290,11 @@ class lcaDeepSC(object):
                             padding='SAME'
                         else:
                             padding='VALID'
-                        curr_act = tf.contrib.nn.conv1d_transpose(curr_act, curr_dict, output_shape, curr_stride, padding=padding)
-                    #relu if sc layer, since activations can't be negative
-                    if(ll != 0 and "sc" in layer_type[ll-1]):
-                        curr_act = tf.nn.relu(curr_act)
 
-                layer_weights.append(curr_act)
+                        curr_pot = tf.contrib.nn.conv1d_transpose(curr_act, curr_dict, output_shape, curr_stride, padding=padding)
+
+
+                layer_weights.append(curr_pot)
             self.model["layer_weights"] = layer_weights
 
     def reset(self, sess):
@@ -292,13 +306,12 @@ class lcaDeepSC(object):
     def step(self, sess, feed_dict, verbose, step, verbose_period=10):
         if(verbose):
             if((step+1) % verbose_period == 0):
-                #Calc stats
+                #act_norm= [np.mean(a) for a in act_norm]
+                [recon_err, output_norm, act_max, nnz] = sess.run(
+                        [self.model["recon_error"], self.model["output_norm"], self.model["act_max"], self.model["nnz"]], feed_dict=feed_dict)
 
-                recon_error_list = [e if e is not None else tf.no_op() for e in self.model["recon_error"]]
-                [recon_err, act_norm, nnz] = sess.run(
-                        [recon_error_list, self.model["act_norm"], self.model["nnz"]], feed_dict=feed_dict)
-
-                act_norm= [np.mean(a) for a in act_norm]
+                output_norm = [np.mean(a) for a in output_norm]
+                #pot_std = [np.mean(a) for a in pot_std]
 
                 outstr = ""
                 outstr += "%3d"%(step+1) + ": \trecon_error ["
@@ -310,9 +323,12 @@ class lcaDeepSC(object):
                 outstr += "] \tnnz ["
                 for num in nnz:
                     outstr += "%4.4f"%num + ", "
-                outstr += "] \tact_norm["
-                for num in act_norm:
-                    outstr += "%7.2f"%num + ", "
+                outstr += "] \toutput_norm["
+                for num in output_norm:
+                    outstr += "%7.5f"%num + ", "
+                outstr += "] \tact_max["
+                for num in act_max:
+                    outstr += "%7.5f"%num + ", "
                 outstr += "]"
 
                 #print("%3f"%step, ": \trecon_error", recon_err, "\tl1_sparsity", l1_sparsity, "\tloss", loss, "\tnnz", nnz)

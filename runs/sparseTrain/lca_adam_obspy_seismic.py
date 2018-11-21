@@ -21,11 +21,11 @@ class Params(object):
     #Base output directory
     out_dir = home_dir + "/mountData/tfSparseCode/"
     #Inner run directory
-    run_dir = out_dir + "/deep_lca_adam_obspy_seismic_2_layer/"
-    save_period  = 10000
+    run_dir = out_dir + "/deep_lca_adam_obspy_seismic_pot/"
+    save_period  = 1000
     #output plots directory
-    plot_period = 1000
-    eval_period = 1000
+    plot_period = 100
+    eval_period = 100
     #Progress step
     progress  = 10
     #Controls how often to write out to tensorboard
@@ -43,19 +43,20 @@ class Params(object):
 
     sc_iter = 1000
     sc_verbose = True
-    sc_lr = 1e-3
+    sc_lr = 5e-4
     D_lr = 5e-4
 
     num_layers = 3
-    dict_patch_size = [1024, 128, 256]
-    err_weight = [1, .1, .1]
-    act_weight = [1, .1, 1]
-    l1_weight = [.02, 0, .02]
+    dict_patch_size = [64, 64, 64]
+    err_weight = [1, 1, 1]
+    act_weight = [1, 1, 1]
+    top_down_weight = [0.1, 0.1, None]
+    l1_weight = [.02, .008, .003]
     l2_weight = 0
-    stride = [2, 1, 2]
+    stride = [2, 1, 1]
     dict_size = [256, 256, 256]
     layer_type = ["sc_conv", "sc_conv", "sc_conv"]
-    normalize_act = [False, True, False]
+    normalize_act = [False, False, False]
 
     target_norm_std = .1
     norm_input = True

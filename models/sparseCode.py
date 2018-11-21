@@ -61,7 +61,7 @@ class sparseCode(base):
                         layer_type=self.params.layer_type,
                         patch_size = self.params.dict_patch_size,
                         stride=self.params.stride, err_weight=self.params.err_weight,
-                        act_weight=self.params.act_weight,
+                        act_weight=self.params.act_weight, top_down_weight=self.params.top_down_weight,
                         #inject_act_bool = self.inject_act_bool, inject_act = self.inject_act,
                         normalize_act=self.params.normalize_act,
                         )
@@ -91,7 +91,9 @@ class sparseCode(base):
                 #Final recon set here
                 self.input_recon = self.scObj.model["recon"][0]
                 if(self.params.norm_input):
-                    self.unscaled_recon = ((self.input_recon/self.params.target_norm_std) + data_mean) * tf.sqrt(data_var)
+                    self.unscaled_recon = (self.input_recon/self.params.target_norm_std) * tf.sqrt(data_var) + data_mean
+                else:
+                    self.unscaled_recon = self.input_recon/self.params.target_norm_std
 
                 for l in range(self.params.num_layers):
                     self.varDict   ["layer_"+str(l)+"_dict"]        = self.scObj.model["dictionary"][l]
