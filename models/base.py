@@ -107,18 +107,19 @@ class base(object):
 
     def trainModel(self, dataObj):
         progress_time = time.time()
-        for step in range(self.params.num_steps):
+        timestep = tf.train.global_step(self.sess, self.timestep)
+        while timestep <= self.params.num_steps:
+            timestep = tf.train.global_step(self.sess, self.timestep)
 
             #Progress print
-            if(self.params.progress > 0 and step % self.params.progress == 0):
+            if(self.params.progress > 0 and timestep % self.params.progress == 0):
                 tmp_time = time.time()
-                timestep = tf.train.global_step(self.sess, self.timestep)
                 print("Timestep ", timestep, ":", float(self.params.progress)/(tmp_time - progress_time), " iterations per second")
                 progress_time = tmp_time
 
             need_plot = False
 
-            if(self.params.plot_period > 0 and step % self.params.plot_period == 0):
+            if(self.params.plot_period > 0 and timestep % self.params.plot_period == 0):
                 need_plot = True
 
             #####Training
@@ -126,9 +127,9 @@ class base(object):
             train_feed_dict = self.getTrainFeedDict(dataObj)
             self.trainStepInit(train_feed_dict)
 
-            if(self.params.save_period > 0 and step % self.params.save_period == 0):
+            if(self.params.save_period > 0 and timestep % self.params.save_period == 0):
                 #Save meta graph if beginning of run
-                if(step == 0):
+                if(timestep == 0):
                     write_meta_graph = True
                 else:
                     write_meta_graph = False
@@ -136,20 +137,20 @@ class base(object):
 
                 print("Model saved in file: %s" % save_path)
 
-            if(step%self.params.write_step == 0):
+            if(timestep%self.params.write_step == 0):
                 self.writeTrainSummary(train_feed_dict)
 
             if(need_plot):
-                fn_prefix = self.train_plot_dir + "/step_" + str(step) + "/"
+                fn_prefix = self.train_plot_dir + "/step_" + str(timestep) + "/"
                 self.makeDir(fn_prefix)
-                self.plot(step, train_feed_dict, fn_prefix, is_train=True)
+                self.plot(timestep, train_feed_dict, fn_prefix, is_train=True)
 
-            self.trainStep(step, train_feed_dict)
+            self.trainStep(timestep, train_feed_dict)
 
 
             #####Testing
             need_test_eval = False
-            if(self.params.eval_period > 0 and step % self.params.eval_period == 0):
+            if(self.params.eval_period > 0 and timestep % self.params.eval_period == 0):
                 need_test_eval = True
 
             #If either evaluating or plotting, need to initialize test step
@@ -164,9 +165,9 @@ class base(object):
                 print("Done test eval")
 
             if(need_plot):
-                fn_prefix = self.test_plot_dir + "/step_" + str(step) + "/"
+                fn_prefix = self.test_plot_dir + "/step_" + str(timestep) + "/"
                 self.makeDir(fn_prefix)
-                self.plot(step, test_feed_dict, fn_prefix, is_train=False)
+                self.plot(timestep, test_feed_dict, fn_prefix, is_train=False)
 
 
             #self.timestep+=1

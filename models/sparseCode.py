@@ -144,9 +144,11 @@ class sparseCode(base):
             np_unscaled_recon = self.sess.run(self.unscaled_recon, feed_dict=feed_dict)
 
         if(self.ndims_input == 2):
-            plotRecon.plotRecon1D(np_recon, np_input, fn_prefix+"_recon",
+            plotRecon.plotRecon1D(np_recon, np_input, fn_prefix+"recon",
+                    num_plot = self.params.num_plot_recon,
                     unscaled_img_matrix = np_unscaled_input, unscaled_recon_matrix=np_unscaled_recon,
-                    groups=self.params.plot_groups, group_title=self.params.plot_group_title)
+                    groups=self.params.plot_groups, group_title=self.params.plot_group_title,
+                    legend=self.params.legend)
         elif(self.ndims_input == 2):
             assert(0)
 
@@ -159,11 +161,16 @@ class sparseCode(base):
             curr_dict = np_dict[l]
             curr_act_count = np_act_count[l]
             #Plot weights
-            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights", activity_count=curr_act_count, sepFeatures=True,
-                    legend=self.params.feature_labels)
+            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights",
+                    activity_count=curr_act_count, group_policy="group",
+                    num_plot = self.params.num_plot_weights,
+                    groups=self.params.plot_groups, group_title=self.params.plot_group_title,
+                    legend=self.params.legend)
 
     def plot(self, step, feed_dict, fn_prefix, is_train):
+        print("Plotting recon")
         self.plotRecon(feed_dict, fn_prefix, is_train)
+        print("Plotting weights")
         self.plotWeights(fn_prefix)
 
     def trainStepInit(self, train_feed_dict):

@@ -115,8 +115,8 @@ class lcaDeepSC(object):
                     low_init_val = -.1
                     high_init_val = .1
                 else:
-                    low_init_val = -.3*curr_l1_weight
-                    high_init_val  = 1.1*curr_l1_weight
+                    low_init_val = 0
+                    high_init_val  = 1.01*curr_l1_weight
                 potential_init = tf.random_uniform(act_shape, low_init_val, high_init_val, dtype=tf.float32)
                 self.reset_potential.append(curr_potential.assign(potential_init))
 
@@ -197,7 +197,7 @@ class lcaDeepSC(object):
 
             d_potential = []
             for i, (grad, var) in enumerate(recon_grad):
-                shrink_term = err_weight[i] * (self.model["potential"][i] - self.model["activation"][i])
+                shrink_term = err_weight[i] * (1/batch) * (self.model["potential"][i] - self.model["activation"][i])
                 #The top down term doesn't exist with the recon loss as written, since potential
                 #isnt connected to the total recon loss
                 if(i < (num_layers - 1)):
