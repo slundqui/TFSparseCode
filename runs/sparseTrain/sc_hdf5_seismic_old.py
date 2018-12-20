@@ -18,7 +18,7 @@ class Params(object):
     #Base output directory
     out_dir = home_dir + "/mountData/tfSparseCode/"
     #Inner run directory
-    run_dir = out_dir + "/sc_hdf5_seismic_no_deep_refactor/"
+    run_dir = out_dir + "/sc_hdf5_seismic_pre_norm_less/"
     save_period  = 1000
     #output plots directory
     plot_period = 500
@@ -31,12 +31,12 @@ class Params(object):
     load = False
     load_file = home_dir + "/mountData/tfSparseCode/sc_hdf5_seismic/checkpoints/save-model-5000"
     #Device to run on
-    device = '/gpu:0'
+    device = '/gpu:1'
     num_steps = 10000000
 
     legend = ["HHE", "HHN", "HHZ"]
     num_plot_weights = 10
-    num_plot_recon = 1
+    num_plot_recon = 3
     plot_groups = trainDataObj.station_group
     plot_group_title = trainDataObj.station_title
 
@@ -49,12 +49,17 @@ class Params(object):
     sc_lr = 1e-3
     D_lr = 1e-3
 
-    dict_patch_size = 1024
-    l1_weight = .06
+    num_layers = 1
+    dict_patch_size = [1024]
+    err_weight = [1]
+    act_weight = [1]
+    top_down_weight = [None]
+    l1_weight = [.003]
     l2_weight = 0
-    stride = 8
-    dict_size = 256
-    layer_type = "sc_conv"
+    stride = [8]
+    dict_size = [256]
+    layer_type = ["sc_conv", "sc_conv", "sc_conv"]
+    normalize_act = [False]
 
     target_norm_std = .1
     norm_input = False

@@ -223,7 +223,7 @@ class lcaDeepSC(object):
                     curr_norm = tf.norm(curr_dict, axis=(0, 1))
                 else:
                     curr_norm = tf.norm(curr_dict, axis=0)
-                curr_norm = tf.maximum(tf.ones(dict_shape), curr_norm)
+                #curr_norm = tf.maximum(tf.ones(dict_shape), curr_norm)
                 self.normalize_D.append(curr_dict.assign(curr_dict/curr_norm))
             self.normalize_D = tf.group(*self.normalize_D)
 

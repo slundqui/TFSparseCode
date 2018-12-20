@@ -3,7 +3,7 @@ from models.base import base
 import models.utils as utils
 import pdb
 import numpy as np
-from models.lcaSC import lcaSC
+from models.lcaDeepSC import lcaDeepSC
 from plots import plotRecon, plotWeights
 
 class sparseCode(base):
@@ -48,11 +48,30 @@ class sparseCode(base):
                 #self.varDict["mask"] = self.mask
 
             with tf.name_scope("sc"):
-                self.scObj = lcaSC(self.norm_input, self.params.l1_weight,
+                ##For semi-supervised learning, i.e., clamping top set of neurons
+                ##TODO better just to add supervised loss?
+                #self.inject_act_bool = tf.placeholder_with_default([False for i in range(self.params.batch_size)], shape=[self.params.batch_size], name="inject_act_bool")
+                ##Calculate last layer shape
+                #if("fc" in self.params.layer_type[self.params.num_layers-1]):
+                #    last_layer_shape = [self.params.batch_size, self.params.dict_size[self.params.num_layers-1]]
+                #else:
+                #    input_shape = self.sub_input.get_shape().as_list()
+                #    num_x = input_shape[1]
+                #    for stride in self.params.stride[:self.params.num_layers]:
+                #        assert(stride is not None)
+                #        num_x = num_x // stride
+                #    last_layer_shape = [self.params.batch_size, num_x, self.params.dict_size[self.params.num_layers-1]]
+
+                #self.inject_act = tf.placeholder_with_default(tf.zeros(last_layer_shape, dtype=tf.float32), shape=last_layer_shape, name="inject_act")
+
+                self.scObj = lcaDeepSC(self.norm_input, self.params.num_layers, self.params.l1_weight,
                         self.params.dict_size, self.params.sc_lr, self.params.D_lr,
                         layer_type=self.params.layer_type,
                         patch_size = self.params.dict_patch_size,
-                        stride=self.params.stride,
+                        stride=self.params.stride, err_weight=self.params.err_weight,
+                        act_weight=self.params.act_weight, top_down_weight=self.params.top_down_weight,
+                        #inject_act_bool = self.inject_act_bool, inject_act = self.inject_act,
+                        normalize_act=self.params.normalize_act,
                         )
 
             with tf.name_scope("active_buf"):
@@ -60,39 +79,47 @@ class sparseCode(base):
                 num_buf = 10
                 self.update_act_count = []
                 self.active_count = []
+                for l in range(self.params.num_layers):
+                    curr_act= self.scObj.model["activation"][l]
+                    if(curr_act is None):
+                        self.update_act_count.append(tf.no_op())
+                        self.active_count.append(tf.no_op())
+                    else:
+                        #Reduce everything but last axis
+                        reduce_axis = list(range(len(curr_act.get_shape().as_list()) - 1))
+                        curr_act_count = tf.reduce_sum(tf.cast(tf.greater(curr_act, 0), tf.float32), axis=reduce_axis)
 
-                curr_act= self.scObj.model["activation"]
-                if(curr_act is None):
-                    self.update_act_count = tf.no_op()
-                    self.active_count = tf.no_op()
-                else:
-                    #Reduce everything but last axis
-                    reduce_axis = list(range(len(curr_act.get_shape().as_list()) - 1))
-                    curr_act_count = tf.reduce_sum(tf.cast(tf.greater(curr_act, 0), tf.float32), axis=reduce_axis)
+                        most_active_buf = tf.Variable(tf.zeros([num_buf, self.params.dict_size[l]]), trainable=False, name="activation_count_" + str(l))
+                        idx = tf.mod(self.timestep, num_buf)
+                        self.update_act_count.append(tf.scatter_update(most_active_buf, idx, curr_act_count))
+                        self.active_count.append(tf.reduce_sum(most_active_buf, axis=0))
 
-                    most_active_buf = tf.Variable(tf.zeros([num_buf, self.params.dict_size]), trainable=False, name="activation_count")
-                    idx = tf.mod(self.timestep, num_buf)
-                    self.update_act_count = tf.scatter_update(most_active_buf, idx, curr_act_count)
-                    self.active_count = tf.reduce_sum(most_active_buf, axis=0)
+                self.update_act_count = tf.group(*self.update_act_count)
 
                 #Final recon set here
-                self.input_recon = self.scObj.model["recon"]
+                self.input_recon = self.scObj.model["recon"][0]
                 if(self.params.norm_input):
                     self.unscaled_recon = (self.input_recon/self.params.target_norm_std) * tf.sqrt(data_var) + data_mean
                 else:
                     self.unscaled_recon = self.input_recon/self.params.target_norm_std
 
-                self.varDict   ["layer_dict"]        = self.scObj.model["dictionary"]
-                self.varDict   ["layer_input"]       = self.scObj.model["input"]
-                self.varDict   ["layer_output"]      = self.scObj.model["output"]
-                self.scalarDict["layer__nnz"]        = self.scObj.model["nnz"]
+                for l in range(self.params.num_layers):
+                    self.varDict   ["layer_"+str(l)+"_dict"]        = self.scObj.model["dictionary"][l]
+                    self.varDict   ["layer_"+str(l)+"_input"]          = self.scObj.model["input"][l]
+                    self.varDict   ["layer_"+str(l)+"_output"]          = self.scObj.model["output"][l]
+                    self.scalarDict["layer_"+str(l)+"_nnz"]         = self.scObj.model["nnz"][l]
 
-                self.varDict   ["layer_sc_potential"]   = self.scObj.model["potential"]
-                self.varDict   ["layer_sc_activation"]  = self.scObj.model["activation"]
-                self.varDict   ["layer_recon"]          = self.scObj.model["recon"]
-                self.scalarDict["layer_sc_recon_err"]   = self.scObj.model["recon_error"]
-                self.scalarDict["layer_sc_l1_sparsity"] = self.scObj.model["l1_sparsity"]
-                self.scalarDict["layer_sc_loss"]        = self.scObj.model["loss"]
+                for l in range(self.params.num_layers):
+                    if("sc" not in self.params.layer_type[l]):
+                        continue
+                    self.varDict   ["layer_"+str(l)+"_sc_potential"]   = self.scObj.model["potential"][l]
+                    self.varDict   ["layer_"+str(l)+"_sc_activation"]  = self.scObj.model["activation"][l]
+                    self.varDict   ["layer_"+str(l)+"_recon"]          = self.scObj.model["recon"][l]
+                    self.scalarDict["layer_"+str(l)+"_sc_recon_err"]   = self.scObj.model["recon_error"][l]
+                    self.scalarDict["layer_"+str(l)+"_sc_l1_sparsity"] = self.scObj.model["l1_sparsity"][l]
+                    self.scalarDict["layer_"+str(l)+"_sc_loss"]        = self.scObj.model["loss"][l]
+
+                self.scalarDict["total_recon_error"] = self.scObj.model["total_recon_error"]
 
 
     def getTrainFeedDict(self, dataObj):
@@ -133,19 +160,19 @@ class sparseCode(base):
             assert(0)
 
     def plotWeights(self, fn_prefix):
-        np_dict = self.sess.run(self.scObj.model["dictionary"])
+        np_dict = self.sess.run(self.scObj.model["layer_weights"])
         np_act_count = self.sess.run(self.active_count)
-
-        curr_dict = np_dict
-        curr_act_count = np_act_count
-
-        #Plot weights
-        plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_weights",
-                order=[2,0,1],
-                activity_count=curr_act_count, group_policy="group",
-                num_plot = self.params.num_plot_weights,
-                groups=self.params.plot_groups, group_title=self.params.plot_group_title,
-                legend=self.params.legend)
+        for l in range(self.params.num_layers):
+            if(np_dict[l] is None):
+                continue
+            curr_dict = np_dict[l]
+            curr_act_count = np_act_count[l]
+            #Plot weights
+            plotWeights.plotWeights1D(curr_dict, fn_prefix+"layer_"+str(l) + "_weights",
+                    activity_count=curr_act_count, group_policy="group",
+                    num_plot = self.params.num_plot_weights,
+                    groups=self.params.plot_groups, group_title=self.params.plot_group_title,
+                    legend=self.params.legend)
 
     def plot(self, step, feed_dict, fn_prefix, is_train):
         print("Plotting recon")

@@ -90,6 +90,7 @@ COLORS=[[0.0, 0.0, 0.0],
         [.5, .5, .5]]
 
 #Order defines the order in weights_matrix for num_weights, v
+#Order should be in [num_weights, patch_size, num_f]
 #Activity has to be in (batch, x, f)
 def plotWeights1D(weights_matrix, out_prefix, order=[0, 1, 2], activity_count=None, group_policy="group", groups=None, group_title=None, num_plot=10, legend=None):
 
