@@ -115,8 +115,8 @@ class lcaDeepSC(object):
                     low_init_val = -.1
                     high_init_val = .1
                 else:
-                    low_init_val = 0
-                    high_init_val  = 1.01*curr_l1_weight
+                    low_init_val = .8*curr_l1_weight
+                    high_init_val  = 1.1*curr_l1_weight
                 potential_init = tf.random_uniform(act_shape, low_init_val, high_init_val, dtype=tf.float32)
                 self.reset_potential.append(curr_potential.assign(potential_init))
 
@@ -306,30 +306,49 @@ class lcaDeepSC(object):
     def step(self, sess, feed_dict, verbose, step, verbose_period=10):
         if(verbose):
             if((step+1) % verbose_period == 0):
+                #TODO store this to disk
                 #act_norm= [np.mean(a) for a in act_norm]
-                [recon_err, output_norm, act_max, nnz] = sess.run(
-                        [self.model["recon_error"], self.model["output_norm"], self.model["act_max"], self.model["nnz"]], feed_dict=feed_dict)
-
-                output_norm = [np.mean(a) for a in output_norm]
-                #pot_std = [np.mean(a) for a in pot_std]
+                stats_list = ["recon_error", "nnz", "output_norm", "input_norm"]
+                stats_nodes = [self.model[stat] for stat in stats_list]
+                output = sess.run(stats_nodes, feed_dict=feed_dict)
+                #[recon_err, output_norm, act_max, nnz] = sess.run(
+                #        [self.model["recon_error"], self.model["output_norm"], self.model["act_max"], self.model["nnz"]], feed_dict=feed_dict)
+                #pdb.set_trace()
 
                 outstr = ""
-                outstr += "%3d"%(step+1) + ": \trecon_error ["
-                for num in recon_err:
-                    if(num is None):
-                        outstr += "  None "
-                    else:
-                        outstr += "%7.2f"%num + ", "
-                outstr += "] \tnnz ["
-                for num in nnz:
-                    outstr += "%4.4f"%num + ", "
-                outstr += "] \toutput_norm["
-                for num in output_norm:
-                    outstr += "%7.5f"%num + ", "
-                outstr += "] \tact_max["
-                for num in act_max:
-                    outstr += "%7.5f"%num + ", "
-                outstr += "]"
+                outstr += "%4d"%(step+1) + ":"
+                for name, out in zip(stats_list, output):
+                    ndims = len(np.array(out).shape)
+                    if(ndims > 1):
+                        out = np.mean(out, axis=tuple(range(1, ndims)))
+                    outstr += " \t" + name + "["
+                    for layer_out in out:
+                        if(layer_out is None):
+                            outstr+= " None, "
+                        else:
+                            try:
+                                outstr += "%7.5f"%layer_out + ", "
+                            except:
+                                pdb.set_trace()
+                    outstr += "]"
+
+                #outstr = ""
+                #outstr += "%3d"%(step+1) + ": \trecon_error ["
+                #for num in recon_err:
+                #    if(num is None):
+                #        outstr += "  None "
+                #    else:
+                #        outstr += "%7.2f"%num + ", "
+                #outstr += "] \tnnz ["
+                #for num in nnz:
+                #    outstr += "%4.4f"%num + ", "
+                #outstr += "] \toutput_norm["
+                #for num in output_norm:
+                #    outstr += "%7.5f"%num + ", "
+                #outstr += "] \tact_max["
+                #for num in act_max:
+                #    outstr += "%7.5f"%num + ", "
+                #outstr += "]"
 
                 #print("%3f"%step, ": \trecon_error", recon_err, "\tl1_sparsity", l1_sparsity, "\tloss", loss, "\tnnz", nnz)
                 print(outstr)

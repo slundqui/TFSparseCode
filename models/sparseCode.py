@@ -11,25 +11,33 @@ class sparseCode(base):
         with tf.device(self.params.device):
             with tf.name_scope("placeholders"):
                 #TODO Split input into input and ground truth, since last input is never being used
+                curr_input_shape = [self.params.batch_size, ] + self.params.input_shape
                 self.input = tf.placeholder(tf.float32,
-                        shape=[self.params.batch_size, ] + self.params.input_shape,
+                        shape=curr_input_shape,
                         name = "input")
 
-                self.ndims_input = len(self.params.input_shape)
+                self.ndims_input = len(curr_input_shape)
                 #TODO add in for images instead of only 1d
-                if(self.ndims_input == 2):
+                if(self.ndims_input == 3):
                     (example_size, num_features) = self.params.input_shape
                 else:
                     print("Not implemented")
                     assert(0)
 
-
-                (data_mean, data_var) = tf.nn.moments(self.input, axes=1, keep_dims=True)
+                if(self.params.norm_ind_features):
+                    norm_reduction_idx = [1,]
+                else:
+                    norm_reduction_idx = [1,2]
+                (data_mean, data_var) = tf.nn.moments(self.input, axes=norm_reduction_idx, keep_dims=True)
                 if(self.params.norm_input):
                     calc_norm = ((self.input - data_mean)/tf.sqrt(data_var)) * self.params.target_norm_std
                     #Expand data_mean and data_var to have same shape as input
-                    data_mean = tf.tile(data_mean, [1, example_size, 1])
-                    data_var = tf.tile(data_var, [1, example_size, 1])
+                    if(self.params.norm_ind_features):
+                        data_mean = tf.tile(data_mean, [1, example_size, 1])
+                        data_var = tf.tile(data_var, [1, example_size, 1])
+                    else:
+                        data_mean = tf.tile(data_mean, [1, example_size, num_features])
+                        data_var = tf.tile(data_var, [1, example_size, num_features])
 
                     self.norm_input = tf.where(tf.equal(data_var, 0), data_mean, calc_norm)
                 else:
@@ -140,16 +148,15 @@ class sparseCode(base):
         np_recon = self.sess.run(self.input_recon, feed_dict=feed_dict)
 
         np_unscaled_input = feed_dict[self.input]
-        if(self.params.norm_input):
-            np_unscaled_recon = self.sess.run(self.unscaled_recon, feed_dict=feed_dict)
+        np_unscaled_recon = self.sess.run(self.unscaled_recon, feed_dict=feed_dict)
 
-        if(self.ndims_input == 2):
+        if(self.ndims_input == 3):
             plotRecon.plotRecon1D(np_recon, np_input, fn_prefix+"recon",
                     num_plot = self.params.num_plot_recon,
                     unscaled_img_matrix = np_unscaled_input, unscaled_recon_matrix=np_unscaled_recon,
                     groups=self.params.plot_groups, group_title=self.params.plot_group_title,
                     legend=self.params.legend)
-        elif(self.ndims_input == 2):
+        else:
             assert(0)
 
     def plotWeights(self, fn_prefix):

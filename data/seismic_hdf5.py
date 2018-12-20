@@ -5,7 +5,7 @@ import random
 import TFSparseCode.data.utils as utils
 
 class SeismicDataHdf5(object):
-    def __init__(self, filename, example_size=None, seed=None):
+    def __init__(self, filename, example_size=None, seed=None, normalize=True):
         if seed is not None:
             random.seed(seed)
 
@@ -16,7 +16,14 @@ class SeismicDataHdf5(object):
         (self.num_samples, self.num_channels, self.num_stations, self.num_events) = self.data.shape
         self.data = np.transpose(self.data, [3, 0, 2, 1])
         self.num_features = self.num_channels * self.num_stations
+        #Data is now [num_events, num_samples, num_stations * num_channels]
         self.data = np.reshape(self.data, [self.num_events, self.num_samples, self.num_features])
+
+        #Normalize by entire dataset, ind by feature
+        if(normalize):
+            mean = np.mean(self.data, axis=(0, 1), keepdims = True)
+            std = np.std(self.data, axis=(0, 1), keepdims = True)
+            self.data = (self.data - mean)/std
 
         self.station_group = np.reshape(np.array(range(self.num_features)), [self.num_stations, self.num_channels])
         self.station_title = ["station_" + str(g[0]) for g in self.station_group]
@@ -27,7 +34,7 @@ class SeismicDataHdf5(object):
 
     def loadStream(self, filename, verbose=True):
         self.file = h5py.File(filename, 'r')
-        #Using only first 5 for now
+        #Using only first 5 for now, TODO param
         data = []
         max_idx = 5
         for idx in range(max_idx):
