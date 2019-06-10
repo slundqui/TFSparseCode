@@ -286,7 +286,7 @@ class base(object):
             ##Define saver
             load_v = self.getLoadVars()
             ##Load specific variables, save all variables
-            self.loader = tf.train.Saver(var_list=load_v, allow_empty=True)
+            self.loader = tf.train.Saver(var_list=load_v, allow_empty=False)
             self.saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=2, allow_empty=True)
 
             #Initialize

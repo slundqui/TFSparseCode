@@ -109,9 +109,18 @@ def plotRecon1D(recon_matrix, img_matrix, outPrefix, num_plot=None, x_range=None
             #Plot each feature as a different color
             legend_lines = []
             for i_f, f in enumerate(g):
+                #Find max/min of each plot
+                val_max = np.max([img[:, f], recon[:, f]])
+                val_min = np.min([img[:, f], recon[:, f]])
+
                 l = axarr[0].plot(img[:, f], color=colors[i_f%8])
                 axarr[1].plot(recon[:, f], color=colors[i_f%8])
                 axarr[2].plot(error[:, f], color=colors[i_f%8])
+
+                axarr[0].set_ylim([val_min, val_max])
+                axarr[1].set_ylim([val_min, val_max])
+                axarr[2].set_ylim([val_min, val_max])
+
                 axarr[3].plot(mask[:, f], color=colors[i_f%8])
 
                 legend_lines.append(l[0])
@@ -135,8 +144,15 @@ def plotRecon1D(recon_matrix, img_matrix, outPrefix, num_plot=None, x_range=None
                 axarr[3].set_title("mask")
                 #Plot each feature as a different color
                 for i_f, f in enumerate(g):
+                    #Find max/min of each plot
+                    val_max = np.max([unscaled_img[:, f], unscaled_recon[:, f]])
+                    val_min = np.min([unscaled_img[:, f], unscaled_recon[:, f]])
                     axarr[0].plot(unscaled_img[:, f], color=colors[i_f%8])
                     axarr[1].plot(unscaled_recon[:, f], color=colors[i_f%8])
+                    axarr[0].set_ylim([val_min, val_max])
+                    axarr[1].set_ylim([val_min, val_max])
+                    axarr[2].set_ylim([val_min, val_max])
+
                     axarr[2].plot(unscaled_error[:, f], color=colors[i_f%8])
                     axarr[3].plot(mask[:, f], color=colors[i_f%8])
                 if(legend is not None):

@@ -9,12 +9,15 @@ from plots import plotRecon, plotWeights
 class sparseCode(base):
     def buildModel(self):
         with tf.device(self.params.device):
+            self.train_classifier = False
             with tf.name_scope("placeholders"):
                 #TODO Split input into input and ground truth, since last input is never being used
                 curr_input_shape = [self.params.batch_size, ] + self.params.input_shape
                 self.input = tf.placeholder(tf.float32,
                         shape=curr_input_shape,
                         name = "input")
+
+
 
                 self.ndims_input = len(curr_input_shape)
                 #TODO add in for images instead of only 1d
@@ -53,6 +56,9 @@ class sparseCode(base):
                         layer_type=self.params.layer_type,
                         patch_size = self.params.dict_patch_size,
                         stride=self.params.stride,
+                        #optimizer = tf.train.GradientDescentOptimizer
+                        gan=self.params.use_gan,
+                        gan_weight = self.params.gan_weight
                         )
 
             with tf.name_scope("active_buf"):
@@ -82,29 +88,81 @@ class sparseCode(base):
                 else:
                     self.unscaled_recon = self.input_recon/self.params.target_norm_std
 
-                self.varDict   ["layer_dict"]        = self.scObj.model["dictionary"]
-                self.varDict   ["layer_input"]       = self.scObj.model["input"]
-                self.varDict   ["layer_output"]      = self.scObj.model["output"]
-                self.scalarDict["layer__nnz"]        = self.scObj.model["nnz"]
+            with tf.variable_scope("classifier"):
+                if(self.params.use_classifier):
+                    self.gt = tf.placeholder(tf.int64,
+                        shape=[self.params.batch_size,],
+                        name = "gt")
+                    act = self.scObj.model["activation"]
+                    #Global average pool across conv dimension
+                    pooled_act = tf.reduce_mean(act, axis=1)
 
-                self.varDict   ["layer_sc_potential"]   = self.scObj.model["potential"]
-                self.varDict   ["layer_sc_activation"]  = self.scObj.model["activation"]
-                self.varDict   ["layer_recon"]          = self.scObj.model["recon"]
-                self.scalarDict["layer_sc_recon_err"]   = self.scObj.model["recon_error"]
-                self.scalarDict["layer_sc_l1_sparsity"] = self.scObj.model["l1_sparsity"]
-                self.scalarDict["layer_sc_loss"]        = self.scObj.model["loss"]
+                    logits = tf.layers.dense(pooled_act, 2,activation=None)
 
+                    self.classifier_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                        scope="classifier/dense/kernel")[0]
+
+                    self.classifier_bias = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                        scope="classifier/dense/bias")[0]
+
+                    self.est = tf.nn.softmax(logits, axis=-1)
+                    self.est_class = tf.argmax(self.est, axis=-1)
+                    self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.est_class, self.gt), tf.float32))
+
+                    self.class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        labels=self.gt, logits=logits)
+
+                    self.class_opt = tf.train.AdamOptimizer(self.params.class_lr).minimize(self.class_loss,
+                        var_list=[self.classifier_weights, self.classifier_bias])
+
+                    self.varDict["classifier_w"] = self.classifier_weights
+                    self.varDict["classifier_b"] = self.classifier_bias
+                    self.varDict["classifier_logits"] = logits
+                    self.varDict["layer_pooled_output"] = pooled_act
+                    self.scalarDict["classifier_loss"] = tf.reduce_sum(self.class_loss)
+                    self.scalarDict["accuracy"] = self.accuracy
+
+
+            self.varDict   ["layer_dict"]        = self.scObj.model["dictionary"]
+            self.varDict   ["layer_input"]       = self.scObj.model["input"]
+            self.varDict   ["layer_output"]      = self.scObj.model["activation"]
+            self.scalarDict["layer_nnz"]        = self.scObj.model["nnz"]
+
+
+            self.varDict   ["layer_potential"]   = self.scObj.model["potential"]
+            self.varDict   ["layer_recon"]          = self.scObj.model["recon"]
+            self.scalarDict["layer_sc_recon_err"]   = self.scObj.model["recon_error"]
+            self.scalarDict["layer_sc_l1_sparsity"] = self.scObj.model["l1_sparsity"]
+            self.scalarDict["layer_sc_loss"]        = self.scObj.model["loss"]
+
+    def getLoadVars(self):
+        load_vars = ["global_step:0", "sc/lca_layer/dictionary:0"]
+
+        vv = [v for v in tf.global_variables() if v.name in load_vars]
+
+        if(self.params.load_gan):
+            vvv = [v for v in tf.global_variables() if "GAN" in v.name]
+            vv = vvv + vv
+        if(self.params.load_classifier):
+           vvv = [v for v in tf.global_variables() if "classifier" in v.name]
+           vv = vvv + vv
+
+        return vv
 
     def getTrainFeedDict(self, dataObj):
         dataDict = dataObj.getData(self.params.batch_size, dataset="train")
         outdict = {}
         outdict[self.input] = dataDict['data']
+        if(self.params.use_classifier):
+            outdict[self.gt] = dataDict['gt']
         return outdict
 
     def getTestFeedDict(self, dataObj):
         dataDict = dataObj.getData(self.params.batch_size, dataset="test")
         outdict = {}
         outdict[self.input] = dataDict['data']
+        if(self.params.use_classifier):
+            outdict[self.gt] = dataDict['gt']
         return outdict
 
     def getEvalFeedDict(self, data):
@@ -114,7 +172,11 @@ class sparseCode(base):
 
     def evalModel(self, feed_dict):
         self.scObj.calcActivations(self.sess, feed_dict, max_iterations=self.params.sc_iter, verbose=self.params.sc_verbose)
-        return self.sess.run(self.scObj.model["activation"][-1])
+        return self.sess.run(self.scObj.model["activation"])
+
+    def calcRecon(self, act):
+        feed_dict = {self.scObj.model["inject_act_placeholder"]: act}
+        return self.sess.run(self.scObj.model["recon_from_act"], feed_dict)
 
     def plotRecon(self, feed_dict, fn_prefix, is_train):
         np_input = self.sess.run(self.norm_input, feed_dict=feed_dict)
@@ -163,7 +225,24 @@ class sparseCode(base):
         #Compute sc
         self.scObj.calcActivations(self.sess, test_feed_dict, max_iterations=self.params.sc_iter, verbose=self.params.sc_verbose)
 
+    def trainClassifier(self, trainDataObj):
+       assert(self.params.use_classifier)
+       self.train_classifier = True
+       self.trainModel(trainDataObj)
+
     def trainStep(self, step, train_feed_dict):
-        self.scObj.updateDict(self.sess, train_feed_dict)
+        if(self.train_classifier):
+            [accuracy, drop] = self.sess.run([self.accuracy, self.class_opt], train_feed_dict)
+            #TODO fancier printing
+            if(self.params.progress > 0 and step % self.params.progress == 0):
+                print("Train Accuracy: ", accuracy)
+        else:
+            self.scObj.updateDict(self.sess, train_feed_dict)
+
+    #For printing test accuracy
+    def evalModelSummary(self, test_feed_dict):
+        super(sparseCode, self).evalModelSummary(test_feed_dict)
+        accuracy = self.sess.run(self.accuracy, test_feed_dict)
+        print("Test Accuracy: ", accuracy)
 
 

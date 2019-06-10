@@ -143,7 +143,7 @@ def plotWeights1D(weights_matrix, out_prefix, order=[0, 1, 2], activity_count=No
         elif(group_policy=="group"):
             num_groups = len(groups)
             num_y_axes = int(np.ceil(num_groups/2))
-            fig, axs = plt.subplots(num_y_axes, 2, sharex=True, sharey=True, figsize=(16, 3*num_y_axes))
+            fig, axs = plt.subplots(num_y_axes, 2, sharex=True, sharey=True, squeeze=False, figsize=(16, 3*num_y_axes))
             for i_g, g in enumerate(groups):
                 y_idx = i_g//2
                 x_idx = i_g % 2
