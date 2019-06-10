@@ -39,20 +39,13 @@ def sparse_weight_variable(shape, inName, sparsePercent = .9):
     inNp[np.nonzero(np.abs(inNp) < sparsePercent)] = 0
     return tf.Variable(inNp, inName)
 
-def l2_weight_variable(shape, name, std=0.01):
-    initial = np.random.normal(scale=std, size=shape).astype(np.float32)
-    ndim = len(shape)
-    axis = tuple([i for i in range(ndim-1)])
-    norm = np.linalg.norm(initial, axis=axis, keepdims=True)
-    return tf.Variable(initial/norm, name=name)
-
-def weight_variable(shape, inName, std=0.01):
-    initial = tf.truncated_normal(shape, stddev=std, dtype=tf.float32)
-    return tf.Variable(initial, name=inName)
+def weight_variable(shape, inName, inStd):
+    initial = tf.truncated_normal_initializer(stddev=inStd)
+    return tf.get_variable(inName, shape, initializer=initial)
 
 def uniform_weight_variable(shape, inName, minVal=0, maxVal=None):
-    initial = tf.random_uniform(shape, minVal, maxVal)
-    return tf.Variable(initial, name=inName)
+    initial = tf.random_uniform_initializer(minVal, maxVal)
+    return tf.get_variable(inName, shape, initializer=initial)
 
 
 def bias_variable(shape, inName, biasInitConst=.01):

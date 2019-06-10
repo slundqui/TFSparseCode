@@ -7,24 +7,28 @@ from tf.lca_adam import LCA_ADAM
 import numpy as np
 import pdb
 
-
-filename = "/home/slundquist/mountData/datasets/CanadianData_2016.txt"
+filename = "/home/slundquist/mountData/datasets/CanadianData_feb.txt"
 example_size = 10000
-event_filename = "/home/slundquist/mountData/datasets/query_2016.csv"
-station_csv = "/home/slundquist/mountData/datasets/station_info.csv"
-
 #Get object from which tensorflow will pull data from
 
 batch_size = 4
 
-trainDataObj = obspySeismicData(filename, example_size, seed=123456, event_csv=event_filename, get_type="event", station_csv=station_csv)
+##Event
+#start_time = "2016-02-24T21:25:00"
+#end_time = "2016-02-24T21:55:00"
+#No event
+start_time = "2016-02-20T00:00:00"
+end_time = "2016-02-20T12:00:00"
+
+trainDataObj = obspySeismicData(filename, example_size, seed=123456, time_range = [start_time, end_time])
+#trainDataObj = obspySeismicData(filename, example_size, seed=123456)
 
 #FISTA params
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_obspy_seismic_train_no_event_eval_event/",
+    'runDir':          "/lca_adam_obspy_seismic_train_event_eval_noevent/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
@@ -33,14 +37,14 @@ params = {
     #output plots directory
     'plotDir':         "plots/",
     'plotReconPeriod':  1*500,
-    'plotWeightPeriod': 1*500,
+    'plotWeightPeriod': 1000*500,
     #Progress step
-    'progress':        500,
+    'progress':        100,
     #Controls how often to write out to tensorboard
     'writeStep':       500,
     #Flag for loading weights from checkpoint
     'load':            True,
-    'loadFile':        "/home/slundquist/mountData/tfSparseCode/lca_adam_obspy_seismic_train_no_event/checkpoints/save-model-5500500",
+    'loadFile':        "/home/slundquist/mountData/tfSparseCode/lca_adam_obspy_seismic_train_event/checkpoints/save-model-1400500",
     #Device to run on
     'device':          '/gpu:1',
     #####Sparse coding params######
@@ -66,8 +70,6 @@ params = {
     'patchSizeX':      1024,
     'normalize':       True,
     'inputMult':       .4,
-    'plot_groups':     trainDataObj.station_group,
-    'plot_group_title':trainDataObj.station_title,
 }
 
 #Allocate tensorflow object

@@ -25,8 +25,6 @@ class LCA_ADAM(base):
         self.patchSizeX = params['patchSizeX']
         self.inputMult = params['inputMult']
         self.normalize = params['normalize']
-        self.plot_groups = params['plot_groups']
-        self.plot_group_title = params['plot_group_title']
 
     def runModel(self):
         #Normalize weights to start
@@ -138,7 +136,7 @@ class LCA_ADAM(base):
                 #self.recon = tf.check_numerics(self.recon, 'recon error', name=None)
 
             with tf.name_scope("Error"):
-                self.error = (1 - self.inputMask) * (self.scaled_inputImage - self.recon)
+                self.error = self.scaled_inputImage - self.recon
 
             with tf.name_scope("Loss"):
                 if(self.fc):
@@ -260,9 +258,9 @@ class LCA_ADAM(base):
         #Draw recons
         plotStr = outPlotDir + "recon_"
         if(np_recon.ndim == 3):
-            [rescaled_inputImage, orig_inputImage, mask] = np.squeeze(self.sess.run([self.scaled_inputImage, self.inputImage, self.inputMask], feed_dict=feedDict))
+            [rescaled_inputImage, orig_inputImage] = np.squeeze(self.sess.run([self.scaled_inputImage, self.inputImage], feed_dict=feedDict))
             numRecon = np.minimum(self.batchSize, 4)
-            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon), unscaled_img_matrix=orig_inputImage, unscaled_recon_matrix=np_unscaled_recon, mask_matrix=mask, groups=self.plot_groups, group_title=self.plot_group_title)
+            plotRecon1d(np_recon, rescaled_inputImage, plotStr, r=range(numRecon), unscaled_img_matrix=orig_inputImage, unscaled_recon_matrix=np_unscaled_recon)
         else:
             plotRecon(np_recon, np_inputImage, plotStr, r=range(4))
 

@@ -2,13 +2,13 @@ import obspy as ob
 import numpy as np
 import pdb
 import random
-import TFSparseCode.data.utils as utils
+import TFSparseCode.dataObj.utils as utils
 import datetime
 from matplotlib.dates import datestr2num
 import csv
 
 class obspySeismicData(object):
-    def __init__(self, filename, example_size, target_rate=40, seed=None, time_range=None, event_csv=None, get_type=None, event_window = 1800, station_csv=None):
+    def __init__(self, filename, example_size, target_rate=40, seed=None, time_range=None, event_csv=None, get_type=None, event_window = 7200):
         if seed is not None:
             random.seed(seed)
         self.get_type = get_type
@@ -22,7 +22,7 @@ class obspySeismicData(object):
         self.num_channels = len(self.trace_dict.keys())
         self.time_window = self.example_size / self.target_rate
         self.delta_time = self.end_time - self.start_time
-        self.inputShape = [self.example_size, self.num_channels]
+        self.inputShape = [1, self.example_size, self.num_channels]
 
         if(event_csv is not None):
             with open(event_csv, 'r') as file:
@@ -38,43 +38,8 @@ class obspySeismicData(object):
             if(len(self.event_times) == 0):
                 print("Error: no events between ", self.start_time, "and", self.end_time)
                 pdb.set_trace()
-        else:
-            self.event_times = None
 
-        if(station_csv is not None):
-            with open(station_csv, 'r') as file:
-                csv_txt = file.readlines()
-            #Remove first entry
-            csv_txt.pop(0)
 
-            #Get station info from traces
-            trace_stations = []
-            station_idxs = []
-            for k in self.trace_dict.keys():
-                station_name = k.split('.')[1]
-                trace_stations.append(station_name)
-                station_idxs.append(self.trace_dict[k])
-
-            self.station_info = []
-            self.station_title = []
-            self.station_group = []
-            for line in csv_txt:
-                split_line = line.split(',')
-                station_key = split_line[1]
-                name = split_line[2]
-                lat = split_line[3]
-                lon = split_line[4]
-
-                idx_list = []
-                for i, trace_s in enumerate(trace_stations):
-                    if station_key == trace_s:
-                        idx_list.append(station_idxs[i])
-                if(len(idx_list) != 0):
-                    self.station_title.append(station_key)
-                    self.station_info.append([name, lat, lon])
-                    self.station_group.append(idx_list)
-        else:
-            self.station_info = None
 
     def loadStream(self, filename):
         fns = utils.readList(filename)
@@ -84,9 +49,7 @@ class obspySeismicData(object):
         for i in range(len(fns)):
             current_st = ob.read(fns[i])
             print(fns[i], np.round(100*i/len(fns)), "%", end='\r', flush=True)
-            for trace in current_st:
-                if(trace.stats['sampling_rate'] - self.target_rate < 1e-4):
-                    st.append(trace)
+            st += current_st
 
         if self.time_range is not None:
             start_time = ob.UTCDateTime(self.time_range[0])
@@ -104,7 +67,7 @@ class obspySeismicData(object):
         #stores list of stds for each trace in dictionary
         #max_dict = {}
         #std_dict = {}
-        self.feature_labels = []
+        new_st = ob.Stream()
 
         count = 0
 
@@ -115,7 +78,10 @@ class obspySeismicData(object):
         for (i, trace) in enumerate(st):
             #print(100*i/len(st), "%", end='\r', flush=True)
             id_val = trace.get_id()
+            #Only store streams at 40 hz
             if(trace.stats['sampling_rate'] - self.target_rate < 1e-4):
+                #Add to new stream
+                new_st.append(trace)
                 #trace_max = trace.max()
                 #trace_std = trace.std()
                 #trace_n = trace.stats['npts']
@@ -123,7 +89,6 @@ class obspySeismicData(object):
                 stats_tuple = (trace.stats['starttime'], trace.stats['endtime'], trace.max())
                 if(id_val not in trace_dict):
                     trace_dict[id_val] = count
-                    self.feature_labels.append(id_val)
                     self.trace_stats[id_val] = [stats_tuple,]
                     count += 1
                 else:
@@ -144,10 +109,11 @@ class obspySeismicData(object):
                 if(end_time is None or trace_et > end_time):
                     end_time = trace_et
 
+
         #Go through traces
         print("Done")
 
-        return(st, trace_dict, start_time, end_time)
+        return(new_st, trace_dict, start_time, end_time)
 
     def getExample(self):
         outData = np.zeros([self.example_size, self.num_channels])
@@ -219,21 +185,17 @@ class obspySeismicData(object):
         #outData = (outData - mean) / std
         return(outData, outMask)
 
-    def getData(self, batchSize, dataset = "all"):
-        outData = np.zeros([batchSize,] + self.inputShape)
+    def getData(self, batchSize):
+        outData = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         #TODO
-        outMask = np.zeros([batchSize,] + self.inputShape)
+        outMask = np.zeros((batchSize, self.inputShape[0], self.inputShape[1], self.inputShape[2]))
         for b in range(batchSize):
             (data, mask) = self.getExample()
             while(np.sum(mask) == mask.size):
                 (data, mask) = self.getExample()
-            outData[b, :, :] = data
-            outMask[b, :, :] = mask
-
-        outDict = {}
-        outDict["data"] = outData
-        outDict["mask"] = outMask
-        return outDict
+            outData[b, 0, :, :] = data
+            outMask[b, 0, :, :] = mask
+        return(outData, outMask)
         #return outData
 
 if __name__=="__main__":
@@ -246,19 +208,16 @@ if __name__=="__main__":
     random.seed(12345678)
 
     #parameters
-    filename = "/home/slundquist/mountData/datasets/CanadianData_jun.txt"
+    filename = "/home/slundquist/mountData/datasets/CanadianData_feb.txt"
     event_filename = "/home/slundquist/mountData/datasets/query_2016.csv"
-    station_csv = "/home/slundquist/mountData/datasets/station_info.csv"
     example_size = 100000
 
     #start_time = "2016-02-24T20:00:00"
     #end_time = "2016-02-25T02:00:00"
     #dataObj = obspySeismicData(filename, example_size, time_range=[start_time, end_time])
-    dataObj = obspySeismicData(filename, example_size, event_csv=event_filename, get_type="event", station_csv=station_csv)
-    print(dataObj.station_info)
-    print(dataObj.station_group)
+    dataObj = obspySeismicData(filename, example_size, event_csv=event_filename, get_type="event")
 
-    (data, mask) = dataObj.getData(10)
+    (data, mask) = dataObj.getData(2)
     prefix='/home/slundquist/mountData/tfSparseCode/test/test_plot'
-    plotRecon1d(mask[:, 0, :, :], data[:, 0, :, :], prefix+"1", groups=dataObj.station_group, group_title=dataObj.station_title)
+    plotRecon1d(mask[:, 0, :, :], data[:, 0, :, :], prefix+"1")
 

@@ -69,103 +69,69 @@ def sliding_window(data, window):
     return np.array(vdata), np.array(mdata)
 
 #Recon must be in (batch, time, features)
-def plotRecon1D(recon_matrix, img_matrix, outPrefix, num_plot=None, x_range=None, unscaled_img_matrix=None, unscaled_recon_matrix=None, var_window=20, mask_matrix=None, groups=None, group_title=None, legend=None):
+def plotRecon1d(recon_matrix, img_matrix, outPrefix, r=None, x_range=None, unscaled_img_matrix=None, unscaled_recon_matrix=None, varWindow=20):
     (batch, nt, nf) = recon_matrix.shape
     (batchImg, ntImg, nfImg) = img_matrix.shape
 
-    if(groups is None):
-        groups = [range(nf)]
-    if(group_title is None):
-        group_title= ["station_" + str(g[0]) for g in groups]
-
-    if num_plot == None:
+    if r == None:
         r = range(batch)
-    elif type(num_plot) == int:
-        r = range(num_plot)
-    else:
-        r = num_plot
 
     for b in r:
         recon = recon_matrix[b]
         img = img_matrix[b]
-        if(mask_matrix is not None):
-            mask = mask_matrix[b]
-        else:
-            mask = np.zeros(recon.shape)
         if(x_range is not None):
             recon = recon[x_range[0]:x_range[1], :]
             img = img[x_range[0]:x_range[1], :]
         error = img - recon
 
-        for i_g, g in enumerate(groups):
-            fig, axarr = plt.subplots(4, 1)
-            fig.suptitle(group_title[i_g])
-            axarr[0].set_title("orig")
-            axarr[1].set_title("recon")
-            axarr[2].set_title("diff")
-            axarr[3].set_title("mask")
-            outGroupPrefix = outPrefix+"_"+group_title[i_g]+"_batch"+str(b)
+        f, axarr = plt.subplots(3, 1)
+        axarr[0].set_title("orig")
+        axarr[1].set_title("recon")
+        axarr[2].set_title("diff")
+        #Plot each feature as a different color
+        for f in range(nf):
+            axarr[0].plot(img[:, f], color=colors[f%8])
+            axarr[1].plot(recon[:, f], color=colors[f%8])
+            axarr[2].plot(error[:, f], color=colors[f%8])
+        plt.savefig(outPrefix+"_"+str(b)+".png")
+        plt.close(f)
 
+        if(unscaled_img_matrix is not None):
+            unscaled_img = unscaled_img_matrix[b]
+            unscaled_recon = unscaled_recon_matrix[b]
+            unscaled_error = unscaled_img - unscaled_recon
+            f, axarr = plt.subplots(3, 1)
+            axarr[0].set_title("unscaled_orig")
+            axarr[1].set_title("unscaled_recon")
+            axarr[2].set_title("unscaled_diff")
             #Plot each feature as a different color
-            legend_lines = []
-            for i_f, f in enumerate(g):
-                l = axarr[0].plot(img[:, f], color=colors[i_f%8])
-                axarr[1].plot(recon[:, f], color=colors[i_f%8])
-                axarr[2].plot(error[:, f], color=colors[i_f%8])
-                axarr[3].plot(mask[:, f], color=colors[i_f%8])
+            for f in range(nf):
+                axarr[0].plot(unscaled_img[:, f], color=colors[f%8])
+                axarr[1].plot(unscaled_recon[:, f], color=colors[f%8])
+                axarr[2].plot(unscaled_error[:, f], color=colors[f%8])
+            plt.savefig(outPrefix+"_unscaled_"+str(b)+".png")
+            plt.close(f)
 
-                legend_lines.append(l[0])
+            #Plot variance of img and recon with sliding window
+            [img_variance, img_mean] = sliding_window(unscaled_img, varWindow)
+            [recon_variance, recon_mean] = sliding_window(unscaled_recon, varWindow)
+            [error_variance, error_mean] = sliding_window(unscaled_error, varWindow)
+            f, axarr = plt.subplots(3, 1)
+            axarr[0].set_title("unscaled_orig_var")
+            axarr[1].set_title("unscaled_recon_var")
+            axarr[2].set_title("unscaled_diff_var")
+            #Plot each feature as a different color
+            for f in range(nf):
+                axarr[0].plot(img_variance[:, f], color=colors[f%8])
+                axarr[1].plot(recon_variance[:, f], color=colors[f%8])
+                axarr[2].plot(error_variance[:, f], color=colors[f%8])
+            plt.savefig(outPrefix+"_unscaled_var_"+str(b)+".png")
+            plt.close(f)
 
-            if(legend is not None):
-                lgd = fig.legend(legend_lines, legend, "upper right")
-                plt.savefig(outGroupPrefix+"_scaled.png", additional_artists=[lgd])
-            else:
-                plt.savefig(outGroupPrefix+"_scaled.png")
-            plt.close('all')
-
-            if(unscaled_img_matrix is not None):
-                unscaled_img = unscaled_img_matrix[b]
-                unscaled_recon = unscaled_recon_matrix[b]
-                unscaled_error = unscaled_img - unscaled_recon
-                fig, axarr = plt.subplots(4, 1)
-                fig.suptitle(group_title[i_g])
-                axarr[0].set_title("unscaled_orig")
-                axarr[1].set_title("unscaled_recon")
-                axarr[2].set_title("unscaled_diff")
-                axarr[3].set_title("mask")
-                #Plot each feature as a different color
-                for i_f, f in enumerate(g):
-                    axarr[0].plot(unscaled_img[:, f], color=colors[i_f%8])
-                    axarr[1].plot(unscaled_recon[:, f], color=colors[i_f%8])
-                    axarr[2].plot(unscaled_error[:, f], color=colors[i_f%8])
-                    axarr[3].plot(mask[:, f], color=colors[i_f%8])
-                if(legend is not None):
-                    lgd = fig.legend(legend_lines, legend, "upper right")
-                    plt.savefig(outGroupPrefix+"_unscaled.png", additional_artists=[lgd])
-                else:
-                    plt.savefig(outGroupPrefix+"_unscaled.png")
-                plt.close('all')
-
-                #Plot variance of img and recon with sliding window
-                [img_variance, img_mean] = sliding_window(unscaled_img, var_window)
-                [recon_variance, recon_mean] = sliding_window(unscaled_recon, var_window)
-                [error_variance, error_mean] = sliding_window(unscaled_error, var_window)
-                fig, axarr = plt.subplots(3, 1)
-                fig.suptitle(group_title[i_g])
-                axarr[0].set_title("unscaled_orig_var")
-                axarr[1].set_title("unscaled_recon_var")
-                axarr[2].set_title("unscaled_diff_var")
-                #Plot each feature as a different color
-                for i_f, f in enumerate(g):
-                    axarr[0].plot(img_variance[:, f], color=colors[i_f%8])
-                    axarr[1].plot(recon_variance[:, f], color=colors[i_f%8])
-                    axarr[2].plot(error_variance[:, f], color=colors[i_f%8])
-                if(legend is not None):
-                    lgd = fig.legend(legend_lines, legend, "upper right")
-                    plt.savefig(outGroupPrefix+"_var.png", additional_artists=[lgd])
-                else:
-                    plt.savefig(outGroupPrefix+"_var.png")
-                plt.close('all')
-
+        #if(unscaled_img_matrix is not None):
+        #    np.savetxt(outPrefix + "orig"+str(b)+".txt", unscaled_img, delimiter=",")
+        #np.savetxt(outPrefix + "scaled_orig"+str(b)+".txt", img, delimiter=",")
+        #np.savetxt(outPrefix + "recon"+str(b)+".txt", recon, delimiter=",")
+        #np.savetxt(outPrefix + "error"+str(b)+".txt", error, delimiter=",")
 
 
