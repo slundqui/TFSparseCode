@@ -37,7 +37,7 @@ class Params(object):
     #Base output directory
     out_dir = home_dir + "/mountData/tfSparseCode/"
     #Inner run directory
-    run_dir = out_dir + "/sc_hdf5_seismic_single_loc_classifier_detection/"
+    run_dir = out_dir + "/sc_hdf5_seismic_single_loc_classifier_detection_less_batch/"
     save_period  = 1000
     #output plots directory
     plot_period = 100
@@ -48,7 +48,7 @@ class Params(object):
     write_step = 10
     #Flag for loading weights from checkpoint
     load = True
-    load_file = home_dir + "/mountData/tfSparseCode/sc_hdf5_seismic_single_loc_ind_norm_fixnorm/checkpoints/save-model-5000"
+    load_file = home_dir + "/mountData/tfSparseCode/sc_hdf5_seismic_single_loc_ind_norm_fixnorm/checkpoints/save-model-7000"
     #Device to run on
     device = '/gpu:0'
     num_steps = 10000000
@@ -60,7 +60,7 @@ class Params(object):
     plot_group_title = trainDataObj.station_title
 
     #####Sparse coding params######
-    batch_size = 8
+    batch_size = 4
     input_shape = [example_size, trainDataObj.num_features]
 
     sc_iter = 1000
@@ -89,7 +89,7 @@ class Params(object):
     ###Classifier params
     load_classifier=False
     use_classifier=True
-    class_lr = 1e-3
+    class_lr = 3e-3
 
 
 

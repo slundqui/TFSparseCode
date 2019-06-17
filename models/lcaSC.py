@@ -72,18 +72,14 @@ class lcaSC(object):
             potential_init = tf.random_uniform(act_shape, low_init_val, high_init_val, dtype=tf.float32)
             self.reset_potential = self.model["potential"].assign(potential_init)
 
-        #with tf.name_scope("inject_act"):
-        #    self.model["inject_act_placeholder"] = tf.placeholder(tf.float32,
-        #        shape=[None,] + act_shape[1:], name="inject_act")
+        with tf.name_scope("inject_act"):
+            #TODO can we make this independent of batch size?
+            self.model["inject_act_placeholder"] = tf.placeholder(tf.float32,
+                shape=[batch,] + act_shape[1:], name="inject_act")
 
-        #    if("sc_fc" == layer_type):
-        #        self.model["recon_from_act"] = tf.matmul(self.model["inject_act_placeholder"],
-        #            self.model["dictionary"], transpose_b=True)
-        #    elif("sc_conv" == layer_type):
-        #        out_shape = self.model["input"].get_shape()[0] + [input_size, input_features]
-        #        self.model["recon_from_act"] = tf.contrib.nn.conv1d_transpose(
-        #            self.model["inject_act_placeholder"], self.model["dictionary"],
-        #            [None, input_size, input_features], stride, padding='SAME')
+            self.model["recon_from_act"] = tf.contrib.nn.conv1d_transpose(
+                self.model["inject_act_placeholder"], self.model["dictionary"],
+                [batch, input_size, input_features], stride, padding='SAME')
 
         with tf.name_scope("gan"):
             real_logits, real_rep = self.discriminator(inputNode)
